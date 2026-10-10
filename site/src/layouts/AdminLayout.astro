@@ -10,33 +10,81 @@ const { title, nav = true } = Astro.props;
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width" />
   <title>{title} · 基督中心堂管理後台</title>
-  <style>
+  <style is:global>
     :root { font-family: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; }
-    body { margin: 0; background: #f7f7f5; color: #1a1a1a; }
+    body { margin: 0; background: #f7f7f5; color: #1a1a1a; font-size: 17px; line-height: 1.5; }
     header { background: #1f2d3d; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    header a.brand { color: white; text-decoration: none; font-weight: 600; }
-    nav a { color: white; margin-left: 1rem; text-decoration: none; font-size: 0.9rem; }
+    header a.brand { color: white; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
+    header nav a { color: white; margin-left: 1rem; text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.35rem; }
     main { max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; }
-    .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    label { display: block; margin-top: 1rem; font-weight: 600; font-size: 0.9rem; }
-    input, textarea { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; box-sizing: border-box; font-family: inherit; }
-    textarea { min-height: 120px; resize: vertical; }
-    button { margin-top: 1.5rem; background: #1f2d3d; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-    button:disabled { opacity: 0.6; cursor: default; }
-    .msg { margin-top: 1rem; font-size: 0.9rem; }
-    .msg.error { color: #b00020; }
-    .msg.success { color: #1a7f37; }
-    ul.links { list-style: none; padding: 0; }
-    ul.links li { margin-bottom: 0.75rem; }
-    ul.links a { display: block; background: white; padding: 1rem; border-radius: 8px; text-decoration: none; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card { background: white; border-radius: 8px; padding: 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card h1 { font-size: 1.4rem; margin: 0 0 1.75rem; }
+    .card form { display: flex; flex-direction: column; }
+    .card label {
+      display: block;
+      margin-top: 1.75rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: #0f6e6e;
+      letter-spacing: 0.01em;
+    }
+    .card label:first-of-type { margin-top: 0; }
+    .card input, .card textarea {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1.05rem;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    .card input:focus, .card textarea:focus {
+      outline: none;
+      border-color: #0f6e6e;
+      box-shadow: 0 0 0 3px rgba(15, 110, 110, 0.15);
+    }
+    .card textarea { min-height: 140px; resize: vertical; }
+    .card button {
+      align-self: flex-start;
+      margin-top: 2.5rem;
+      background: #1f2d3d;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.75rem;
+      border-radius: 6px;
+      font-size: 1.05rem;
+      cursor: pointer;
+    }
+    .card button:disabled { opacity: 0.6; cursor: default; }
+    .card .msg { margin-top: 1.25rem; font-size: 0.95rem; }
+    .card .msg.error { color: #b00020; }
+    .card .msg.success { color: #1a7f37; }
+    .card ul.links { list-style: none; padding: 0; margin: 0; }
+    .card ul.links li { margin-bottom: 0.75rem; }
+    .card ul.links a { display: block; background: white; padding: 1rem; border-radius: 8px; text-decoration: none; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-size: 1.1rem; }
   </style>
 </head>
 <body>
   <header>
-    <a class="brand" href="/admin/">基督中心堂管理後台</a>
+    <a class="brand" href="/admin/">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 9.5 12 3l9 6.5" />
+        <path d="M5 10v10a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1V10" />
+      </svg>
+      <span>基督中心堂管理後台</span>
+    </a>
     {nav && (
       <nav>
-        <a href="#" id="logout-link">登出</a>
+        <a href="#" id="logout-link">
+          <span>登出</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </a>
       </nav>
     )}
   </header>
