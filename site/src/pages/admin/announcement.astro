@@ -1,0 +1,56 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+<AdminLayout title="發佈公告">
+  <h1>發佈公告</h1>
+  <form id="announcement-form">
+    <label for="title">標題</label>
+    <input type="text" id="title" name="title" required />
+
+    <label for="event_date">日期</label>
+    <input type="date" id="event_date" name="event_date" required />
+
+    <label for="body">內容</label>
+    <textarea id="body" name="body" required></textarea>
+
+    <button type="submit">發佈</button>
+    <p class="msg" id="msg"></p>
+  </form>
+</AdminLayout>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  import { requireAuth } from '../../lib/requireAuth';
+
+  await requireAuth();
+
+  const form = document.getElementById('announcement-form') as HTMLFormElement;
+  const msg = document.getElementById('msg') as HTMLParagraphElement;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.className = 'msg';
+
+    const submitButton = form.querySelector('button')!;
+    submitButton.disabled = true;
+
+    const title = (form.elements.namedItem('title') as HTMLInputElement).value;
+    const event_date = (form.elements.namedItem('event_date') as HTMLInputElement).value;
+    const body = (form.elements.namedItem('body') as HTMLTextAreaElement).value;
+
+    const { error } = await supabase.from('announcements').insert({ title, event_date, body });
+
+    if (error) {
+      msg.textContent = `發佈失敗：${error.message}`;
+      msg.className = 'msg error';
+      submitButton.disabled = false;
+      return;
+    }
+
+    msg.textContent = '已成功發佈！';
+    msg.className = 'msg success';
+    form.reset();
+    submitButton.disabled = false;
+  });
+</script>

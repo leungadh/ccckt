@@ -1,0 +1,61 @@
+---
+interface Props {
+  title: string;
+  nav?: boolean;
+}
+const { title, nav = true } = Astro.props;
+---
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>{title} · 基督中心堂管理後台</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; }
+    body { margin: 0; background: #f7f7f5; color: #1a1a1a; }
+    header { background: #1f2d3d; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    header a.brand { color: white; text-decoration: none; font-weight: 600; }
+    nav a { color: white; margin-left: 1rem; text-decoration: none; font-size: 0.9rem; }
+    main { max-width: 640px; margin: 2rem auto; padding: 0 1.5rem; }
+    .card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    label { display: block; margin-top: 1rem; font-weight: 600; font-size: 0.9rem; }
+    input, textarea { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; box-sizing: border-box; font-family: inherit; }
+    textarea { min-height: 120px; resize: vertical; }
+    button { margin-top: 1.5rem; background: #1f2d3d; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .msg { margin-top: 1rem; font-size: 0.9rem; }
+    .msg.error { color: #b00020; }
+    .msg.success { color: #1a7f37; }
+    ul.links { list-style: none; padding: 0; }
+    ul.links li { margin-bottom: 0.75rem; }
+    ul.links a { display: block; background: white; padding: 1rem; border-radius: 8px; text-decoration: none; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/admin/">基督中心堂管理後台</a>
+    {nav && (
+      <nav>
+        <a href="#" id="logout-link">登出</a>
+      </nav>
+    )}
+  </header>
+  <main>
+    <div class="card">
+      <slot />
+    </div>
+  </main>
+  {nav && (
+    <script>
+      import { supabase } from '../lib/supabase';
+
+      const logoutLink = document.getElementById('logout-link');
+      logoutLink?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await supabase.auth.signOut();
+        window.location.href = '/admin/login';
+      });
+    </script>
+  )}
+</body>
+</html>

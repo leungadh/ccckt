@@ -1,0 +1,52 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+<AdminLayout title="登入" nav={false}>
+  <h1>義工登入</h1>
+  <form id="login-form">
+    <label for="email">電郵</label>
+    <input type="email" id="email" name="email" required autocomplete="username" />
+
+    <label for="password">密碼</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password" />
+
+    <button type="submit">登入</button>
+    <p class="msg" id="msg"></p>
+  </form>
+</AdminLayout>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+
+  const form = document.getElementById('login-form') as HTMLFormElement;
+  const msg = document.getElementById('msg') as HTMLParagraphElement;
+
+  // Already logged in? Skip straight to the dashboard.
+  const { data } = await supabase.auth.getSession();
+  if (data.session) {
+    window.location.href = '/admin/';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.className = 'msg';
+
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+
+    const submitButton = form.querySelector('button')!;
+    submitButton.disabled = true;
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      msg.textContent = '登入失敗：電郵或密碼不正確。';
+      msg.className = 'msg error';
+      submitButton.disabled = false;
+      return;
+    }
+
+    window.location.href = '/admin/';
+  });
+</script>

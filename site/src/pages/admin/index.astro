@@ -1,0 +1,16 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+<AdminLayout title="首頁">
+  <h1>你好！請選擇要發佈的內容：</h1>
+  <ul class="links">
+    <li><a href="/admin/announcement">📢 發佈公告</a></li>
+    <li><a href="/admin/sermon">📖 發佈講道</a></li>
+    <li><a href="/admin/event">📅 新增活動</a></li>
+  </ul>
+</AdminLayout>
+
+<script>
+  import { requireAuth } from '../../lib/requireAuth';
+  await requireAuth();
+</script>
