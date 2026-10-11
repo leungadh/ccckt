@@ -1,0 +1,38 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+---
+<PublicLayout title="公告">
+  <h1>公告</h1>
+  <div id="announcements-list" class="empty">載入中…</div>
+</PublicLayout>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  import { el, text } from '../../lib/dom';
+  import { formatDate } from '../../lib/format';
+
+  async function loadAnnouncements() {
+    const container = document.getElementById('announcements-list')!;
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('event_date', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無公告。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(formatDate(item.event_date))]);
+        const body = el('p', {}, [text(item.body)]);
+        return el('div', { class: 'list-item' }, [h3, meta, body]);
+      }),
+    );
+  }
+
+  loadAnnouncements();
+</script>

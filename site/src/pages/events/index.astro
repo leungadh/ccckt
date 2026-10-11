@@ -1,0 +1,38 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+---
+<PublicLayout title="行事曆">
+  <h1>行事曆</h1>
+  <div id="events-list" class="empty">載入中…</div>
+</PublicLayout>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  import { el, text } from '../../lib/dom';
+  import { formatDateTime } from '../../lib/format';
+
+  async function loadEvents() {
+    const container = document.getElementById('events-list')!;
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('event_at', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無活動。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(formatDateTime(item.event_at))]);
+        const body = el('p', {}, [text(item.description)]);
+        return el('div', { class: 'list-item' }, [h3, meta, body]);
+      }),
+    );
+  }
+
+  loadEvents();
+</script>

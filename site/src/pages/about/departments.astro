@@ -1,0 +1,23 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+
+const departments = [
+  { name: '差傳部', note: '宣教士消息' },
+  { name: '傳道部' },
+  { name: '探訪部', note: '探訪表格' },
+  { name: '關顧部' },
+  { name: '主日學部' },
+  { name: '聖樂部', note: '排練時間' },
+];
+---
+<PublicLayout title="教會各部">
+  <p><a href="/about">&larr; 教會概覽</a></p>
+  <h1>教會各部</h1>
+  <ul>
+    {departments.map((d) => <li>{d.name}{d.note && ` — ${d.note}`}</li>)}
+  </ul>
+</PublicLayout>
+
+<style>
+  ul { padding-left: 1.3rem; line-height: 2; }
+</style>

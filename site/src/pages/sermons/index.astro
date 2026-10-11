@@ -1,0 +1,50 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+---
+<PublicLayout title="聖道回顧">
+  <h1>聖道回顧</h1>
+  <div id="sermons-list" class="empty">載入中…</div>
+</PublicLayout>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  import { sermonFileUrl } from '../../lib/sermonFileUrl';
+  import { el, text } from '../../lib/dom';
+  import { formatDate } from '../../lib/format';
+
+  async function loadSermons() {
+    const container = document.getElementById('sermons-list')!;
+    const { data, error } = await supabase
+      .from('sermons')
+      .select('*')
+      .order('sermon_date', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無講道記錄。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(`${formatDate(item.sermon_date)} · 講員：${item.speaker}`)]);
+        const actions = el('div', { class: 'actions' });
+
+        if (item.livestream_url) {
+          actions.appendChild(el('a', { class: 'btn btn-live', href: item.livestream_url, target: '_blank' }, [text('📡 觀看直播')]));
+        }
+        if (item.recording_url) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: item.recording_url, target: '_blank' }, [text('錄影')]));
+        }
+        if (item.file_path) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: sermonFileUrl(item.file_path), target: '_blank' }, [text('詩歌/經文')]));
+        }
+
+        return el('div', { class: 'list-item' }, [h3, meta, actions]);
+      }),
+    );
+  }
+
+  loadSermons();
+</script>

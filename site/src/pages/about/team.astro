@@ -1,0 +1,23 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+
+const team = [
+  '黃偉略牧師（堂主任）',
+  '黃陳麗群師母',
+  '李尹珍姑娘',
+  '陳翼傳道',
+  '林秀春姑娘',
+  '黎偉光傳道',
+];
+---
+<PublicLayout title="教牧同工">
+  <p><a href="/about">&larr; 教會概覽</a></p>
+  <h1>教牧同工</h1>
+  <ul>
+    {team.map((person) => <li>{person}</li>)}
+  </ul>
+</PublicLayout>
+
+<style>
+  ul { padding-left: 1.3rem; line-height: 2; }
+</style>

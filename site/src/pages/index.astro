@@ -1,16 +1,111 @@
 ---
+import PublicLayout from '../layouts/PublicLayout.astro';
 ---
+<PublicLayout title="主頁">
+  <h1>歡迎蒞臨基督中心堂（九龍塘）</h1>
+  <p>主日崇拜時間：上午11:00 · 地址：九龍塘窩打老道144號</p>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+  <h2>最新公告</h2>
+  <div id="announcements-list" class="empty">載入中…</div>
+
+  <h2>最新講道</h2>
+  <div id="sermons-list" class="empty">載入中…</div>
+
+  <h2>活動</h2>
+  <div id="events-list" class="empty">載入中…</div>
+</PublicLayout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+  import { sermonFileUrl } from '../lib/sermonFileUrl';
+  import { el, text } from '../lib/dom';
+  import { formatDate, formatDateTime } from '../lib/format';
+
+  async function loadAnnouncements() {
+    const container = document.getElementById('announcements-list')!;
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('event_date', { ascending: false })
+      .limit(3);
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無公告。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(formatDate(item.event_date))]);
+        const body = el('p', {}, [text(item.body)]);
+        return el('div', { class: 'list-item' }, [h3, meta, body]);
+      }),
+    );
+  }
+
+  async function loadSermons() {
+    const container = document.getElementById('sermons-list')!;
+    const { data, error } = await supabase
+      .from('sermons')
+      .select('*')
+      .order('sermon_date', { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無講道記錄。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(`${formatDate(item.sermon_date)} · 講員：${item.speaker}`)]);
+        const actions = el('div', { class: 'actions' });
+
+        if (item.livestream_url) {
+          actions.appendChild(el('a', { class: 'btn btn-live', href: item.livestream_url, target: '_blank' }, [text('📡 觀看直播')]));
+        }
+        if (item.recording_url) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: item.recording_url, target: '_blank' }, [text('錄影')]));
+        }
+        if (item.file_path) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: sermonFileUrl(item.file_path), target: '_blank' }, [text('詩歌/經文')]));
+        }
+
+        return el('div', { class: 'list-item' }, [h3, meta, actions]);
+      }),
+    );
+  }
+
+  async function loadEvents() {
+    const container = document.getElementById('events-list')!;
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .gte('event_at', new Date().toISOString())
+      .order('event_at', { ascending: true })
+      .limit(3);
+
+    if (error || !data || data.length === 0) {
+      container.textContent = '暫無活動。';
+      return;
+    }
+
+    container.className = '';
+    container.replaceChildren(
+      ...data.map((item) => {
+        const h3 = el('h3', {}, [text(item.title)]);
+        const meta = el('div', { class: 'meta' }, [text(formatDateTime(item.event_at))]);
+        const body = el('p', {}, [text(item.description)]);
+        return el('div', { class: 'list-item' }, [h3, meta, body]);
+      }),
+    );
+  }
+
+  loadAnnouncements();
+  loadSermons();
+  loadEvents();
+</script>

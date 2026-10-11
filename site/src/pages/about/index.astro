@@ -1,0 +1,44 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+
+const faith = [
+  '我們相信原本聖經（新舊約六十六卷）每字每句都是受神之默示而寫成，絕無錯誤，是信仰與生活的最高權威。',
+  '我們相信聖父、聖子、聖靈三位同為一，無始無終，永遠共存，有合一的屬性及相同的神格，共同創造宇宙萬物，成全救贖之工。',
+  '我們相信耶穌基督乃是聖子，由聖靈感孕，從童貞女馬利亞而生，一生絕無沾染罪惡。因贖世人的罪，被釘死於十字架，三日後帶榮耀的身體復活。',
+  '我們相信聖靈是三一真神的第三位，能使世人知罪悔改。當信徒重生時，聖靈即承居信徒心內，使信徒與主聯合，又為信徒生活能力之泉源。',
+  '我們相信人是神照衪自己的形象和樣式造的，絕非從低等動物演進而來。因亞當犯罪，罪便進入世界而普及全人類，因此人類與神隔絕，落在神永刑的審判之下。',
+  '我們相信救贖全是出於神的恩典，藉著耶穌基督親身死在十字架上所流出的寶血，叫凡相信衪的人，罪得赦免。除衪以外，別無拯救。信徒得贖後，藉著神的大能，在基督裡永被保守，一次得救永遠得救。',
+  '我們相信教會是基督的身體，基督是教會的元首。教會乃由重生之信徒在神的恩典，愛之聯繫及聖經之教導下所組成，得以共同崇拜及彼此交通。',
+  '我們相信基督照衪的應許必要再來，審判活人死人，建立主的國度，直到永遠。',
+];
+
+const subPages = [
+  { href: '/about/pastor-message', label: '牧者心聲' },
+  { href: '/about/history', label: '教會歷史' },
+  { href: '/about/team', label: '教牧同工' },
+  { href: '/about/departments', label: '教會各部' },
+];
+---
+<PublicLayout title="教會概覽">
+  <h1>教會概覽</h1>
+
+  <ul class="links">
+    {subPages.map((p) => <li><a href={p.href}>{p.label}</a></li>)}
+  </ul>
+
+  <h2>信仰大綱</h2>
+  {faith.map((item) => <p>{item}</p>)}
+</PublicLayout>
+
+<style>
+  ul.links { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0 0 1rem; }
+  ul.links li a {
+    display: block;
+    background: #eef3f3;
+    color: #0f6e6e;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+</style>
