@@ -12,58 +12,112 @@ const navLinks = [
   { href: '/weather', label: '天氣指引' },
   { href: '/contact', label: '聯絡我們' },
 ];
+
+const pathname = Astro.url.pathname;
+function isActive(href: string) {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 ---
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width" />
   <title>{title} · 基督中心堂（九龍塘）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <style is:global>
-    :root { font-family: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; }
-    body { margin: 0; background: #f7f7f5; color: #1a1a1a; font-size: 17px; line-height: 1.6; }
-    a { color: #0f6e6e; }
+    :root {
+      --font-body: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      --color-bg: #f1f4f3;
+      --color-surface: #ffffff;
+      --color-surface-alt: #f1f6f6;
+      --color-primary: #16293a;
+      --color-primary-light: #233c53;
+      --color-accent: #0f8080;
+      --color-accent-dark: #0b6363;
+      --color-text: #1a1f23;
+      --color-muted: #667179;
+      --radius-lg: 18px;
+      --radius-md: 12px;
+      --shadow-sm: 0 1px 3px rgba(16, 24, 27, 0.07);
+      --shadow-md: 0 10px 30px rgba(16, 24, 27, 0.09);
+    }
 
-    header.site-header { background: #1f2d3d; color: white; }
-    .header-inner { max-width: 900px; margin: 0 auto; padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; }
-    .brand { color: white; text-decoration: none; font-weight: 700; font-size: 1.15rem; display: inline-flex; align-items: center; gap: 0.6rem; }
-    .brand .logo-chip { background: white; border-radius: 6px; padding: 0.3rem 0.5rem; display: inline-flex; align-items: center; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); font-size: 17px; line-height: 1.65; }
+    a { color: var(--color-accent); }
+
+    header.site-header {
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-inner { max-width: 960px; margin: 0 auto; padding: 0.9rem 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; }
+    .brand { color: white; text-decoration: none; font-weight: 800; font-size: 1.1rem; display: inline-flex; align-items: center; gap: 0.65rem; letter-spacing: -0.01em; }
+    .brand .logo-chip { background: white; border-radius: 8px; padding: 0.3rem 0.5rem; display: inline-flex; align-items: center; }
     .brand .logo-chip img { height: 20px; display: block; }
-    nav.site-nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; }
-    nav.site-nav a { color: #d7e4e4; text-decoration: none; font-size: 0.95rem; }
-    nav.site-nav a:hover, nav.site-nav a.active { color: white; text-decoration: underline; }
+    nav.site-nav { display: flex; flex-wrap: wrap; gap: 0.15rem; }
+    nav.site-nav a {
+      color: rgba(255, 255, 255, 0.78);
+      text-decoration: none;
+      font-size: 0.93rem;
+      font-weight: 500;
+      padding: 0.4rem 0.8rem;
+      border-radius: 999px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    nav.site-nav a:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+    nav.site-nav a.active { background: rgba(255, 255, 255, 0.16); color: white; }
 
-    main { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
-    .page-card { background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    h1 { font-size: 1.6rem; margin: 0 0 1.5rem; color: #1f2d3d; }
-    h2 { font-size: 1.2rem; margin: 2rem 0 0.75rem; color: #1f2d3d; }
-    p { margin: 0 0 1rem; }
+    main { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem 3.5rem; }
+    .page-card { background: var(--color-surface); border-radius: var(--radius-lg); padding: 2.5rem; box-shadow: var(--shadow-md); }
+    h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 0.75rem; color: var(--color-primary); }
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 2.25rem 0 0.9rem; color: var(--color-primary); padding-bottom: 0.5rem; border-bottom: 2px solid var(--color-surface-alt); }
+    p { margin: 0 0 1rem; color: var(--color-text); }
 
-    .list-item { border-bottom: 1px solid #eee; padding: 1.25rem 0; }
-    .list-item:last-child { border-bottom: none; }
-    .list-item .meta { font-size: 0.9rem; color: #666; margin-bottom: 0.4rem; }
-    .list-item h3 { margin: 0 0 0.4rem; font-size: 1.1rem; color: #1a1a1a; }
-    .list-item p { white-space: pre-line; }
-    .list-item .actions { margin-top: 0.6rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    #announcements-list, #sermons-list, #events-list { display: grid; gap: 0.9rem; }
+    .list-item {
+      background: var(--color-surface-alt);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .list-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .list-item .meta { font-size: 0.88rem; color: var(--color-muted); margin-bottom: 0.4rem; font-weight: 500; }
+    .list-item h3 { margin: 0 0 0.4rem; font-size: 1.1rem; color: var(--color-text); }
+    .list-item p { white-space: pre-line; margin-bottom: 0; }
+    .list-item .actions { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
-    .btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-size: 0.9rem; }
-    .btn-live { background: #b00020; color: white; font-weight: 600; }
-    .btn-secondary { background: #eef3f3; color: #0f6e6e; }
+    .btn { display: inline-block; padding: 0.55rem 1.3rem; border-radius: 999px; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: opacity 0.15s ease, transform 0.15s ease; }
+    .btn:hover { opacity: 0.88; }
+    .btn-live { background: linear-gradient(135deg, #e11d48, #b00020); color: white; }
+    .btn-secondary { background: white; color: var(--color-accent-dark); border: 1px solid rgba(15, 128, 128, 0.3); }
 
-    .empty { color: #888; font-style: italic; }
+    .empty { color: var(--color-muted); font-style: italic; }
 
-    .hero { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
-    .hero .hero-text { flex: 1 1 260px; }
+    .hero { display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .hero .hero-text { flex: 1 1 280px; }
     .hero .hero-text h1 { margin-bottom: 0.75rem; }
-    .hero .hero-image { flex: 0 1 320px; min-width: 220px; }
-    .hero .hero-image img { width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .hero .hero-text p { color: var(--color-muted); font-size: 1.05rem; }
+    .hero .hero-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .hero .hero-actions a { background: var(--color-accent); color: white; }
+    .hero .hero-actions a.secondary { background: var(--color-surface-alt); color: var(--color-primary); }
+    .hero .hero-image { flex: 0 1 340px; min-width: 220px; }
+    .hero .hero-image img { width: 100%; height: auto; border-radius: var(--radius-lg); display: block; box-shadow: var(--shadow-md); }
 
-    footer.site-footer { background: #1f2d3d; color: #cfd8d8; margin-top: 3rem; }
-    .footer-inner { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.7; }
-    footer.site-footer a { color: #cfd8d8; }
+    footer.site-footer { background: var(--color-primary); color: rgba(255, 255, 255, 0.7); margin-top: 1rem; }
+    .footer-inner { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.8; }
+    footer.site-footer a { color: rgba(255, 255, 255, 0.85); }
 
     @media (max-width: 600px) {
-      main { padding: 1.5rem 1rem; }
-      .page-card { padding: 1.25rem; }
+      main { padding: 1.5rem 1rem 2.5rem; }
+      .page-card { padding: 1.5rem; border-radius: var(--radius-md); }
+      h1 { font-size: 1.45rem; }
     }
   </style>
 </head>
@@ -76,7 +130,7 @@ const navLinks = [
       </a>
       <nav class="site-nav">
         {navLinks.map((link) => (
-          <a href={link.href}>{link.label}</a>
+          <a href={link.href} class={isActive(link.href) ? 'active' : ''}>{link.label}</a>
         ))}
       </nav>
     </div>
