@@ -25,7 +25,9 @@ const navLinks = [
 
     header.site-header { background: #1f2d3d; color: white; }
     .header-inner { max-width: 900px; margin: 0 auto; padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; }
-    .brand { color: white; text-decoration: none; font-weight: 700; font-size: 1.15rem; }
+    .brand { color: white; text-decoration: none; font-weight: 700; font-size: 1.15rem; display: inline-flex; align-items: center; gap: 0.6rem; }
+    .brand .logo-chip { background: white; border-radius: 6px; padding: 0.3rem 0.5rem; display: inline-flex; align-items: center; }
+    .brand .logo-chip img { height: 20px; display: block; }
     nav.site-nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; }
     nav.site-nav a { color: #d7e4e4; text-decoration: none; font-size: 0.95rem; }
     nav.site-nav a:hover, nav.site-nav a.active { color: white; text-decoration: underline; }
@@ -49,6 +51,12 @@ const navLinks = [
 
     .empty { color: #888; font-style: italic; }
 
+    .hero { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .hero .hero-text { flex: 1 1 260px; }
+    .hero .hero-text h1 { margin-bottom: 0.75rem; }
+    .hero .hero-image { flex: 0 1 320px; min-width: 220px; }
+    .hero .hero-image img { width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
     footer.site-footer { background: #1f2d3d; color: #cfd8d8; margin-top: 3rem; }
     .footer-inner { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.7; }
     footer.site-footer a { color: #cfd8d8; }
@@ -62,7 +70,10 @@ const navLinks = [
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="/">基督中心堂（九龍塘）</a>
+      <a class="brand" href="/">
+        <span class="logo-chip"><img src="/images/logo.png" alt="" width="378" height="49" /></span>
+        <span>基督中心堂（九龍塘）</span>
+      </a>
       <nav class="site-nav">
         {navLinks.map((link) => (
           <a href={link.href}>{link.label}</a>

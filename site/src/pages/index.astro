@@ -2,8 +2,15 @@
 import PublicLayout from '../layouts/PublicLayout.astro';
 ---
 <PublicLayout title="主頁">
-  <h1>歡迎蒞臨基督中心堂（九龍塘）</h1>
-  <p>主日崇拜時間：上午11:00 · 地址：九龍塘窩打老道144號</p>
+  <div class="hero">
+    <div class="hero-text">
+      <h1>歡迎蒞臨基督中心堂（九龍塘）</h1>
+      <p>主日崇拜時間：上午11:00 · 地址：九龍塘窩打老道144號</p>
+    </div>
+    <div class="hero-image">
+      <img src="/images/courtyard.jpg" alt="教會庭園一角" width="378" height="263" />
+    </div>
+  </div>
 
   <h2>最新公告</h2>
   <div id="announcements-list" class="empty">載入中…</div>
