@@ -11,8 +11,33 @@ import PublicLayout from '../layouts/PublicLayout.astro';
         <a class="btn secondary" href="/events">行事曆</a>
       </div>
     </div>
-    <div class="hero-image">
-      <img src="/images/courtyard.jpg" alt="教會庭園一角" width="378" height="263" />
+    <div class="hero-carousel" id="hero-carousel">
+      <div class="carousel-track">
+        <a class="carousel-slide" href="/about">
+          <img src="/images/church_entrance_sign.jpg" alt="教會入口銅牌" width="456" height="161" />
+          <span class="carousel-caption">教會概覽</span>
+        </a>
+        <a class="carousel-slide" href="/sermons">
+          <img src="/images/book_shelf.jpg" alt="教會圖書角" width="456" height="161" />
+          <span class="carousel-caption">聖道回顧</span>
+        </a>
+        <a class="carousel-slide" href="/events">
+          <img src="/images/fish_pond_2.jpg" alt="教會錦鯉池" width="456" height="161" />
+          <span class="carousel-caption">行事曆</span>
+        </a>
+        <a class="carousel-slide" href="/contact">
+          <img src="/images/courtyard.jpg" alt="教會庭園一角" width="378" height="263" />
+          <span class="carousel-caption">聯絡我們</span>
+        </a>
+      </div>
+      <button class="carousel-nav carousel-prev" type="button" aria-label="上一張">‹</button>
+      <button class="carousel-nav carousel-next" type="button" aria-label="下一張">›</button>
+      <div class="carousel-dots">
+        <button class="carousel-dot" type="button" aria-label="第 1 張"></button>
+        <button class="carousel-dot" type="button" aria-label="第 2 張"></button>
+        <button class="carousel-dot" type="button" aria-label="第 3 張"></button>
+        <button class="carousel-dot" type="button" aria-label="第 4 張"></button>
+      </div>
     </div>
   </div>
 
@@ -116,7 +141,31 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     );
   }
 
+  function initCarousel() {
+    const root = document.getElementById('hero-carousel');
+    if (!root) return;
+
+    const track = root.querySelector<HTMLElement>('.carousel-track')!;
+    const slides = Array.from(root.querySelectorAll<HTMLElement>('.carousel-slide'));
+    const dots = Array.from(root.querySelectorAll<HTMLElement>('.carousel-dot'));
+    let index = 0;
+
+    function show(i: number) {
+      index = (i + slides.length) % slides.length;
+      track.style.transform = `translateX(-${index * 100}%)`;
+      dots.forEach((dot, di) => dot.classList.toggle('active', di === index));
+    }
+
+    root.querySelector('.carousel-prev')!.addEventListener('click', () => show(index - 1));
+    root.querySelector('.carousel-next')!.addEventListener('click', () => show(index + 1));
+    dots.forEach((dot, di) => dot.addEventListener('click', () => show(di)));
+
+    show(0);
+    setInterval(() => show(index + 1), 6000);
+  }
+
   loadAnnouncements();
   loadSermons();
   loadEvents();
+  initCarousel();
 </script>

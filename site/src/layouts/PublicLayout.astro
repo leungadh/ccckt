@@ -59,8 +59,6 @@ function isActive(href: string) {
     }
     .header-inner { max-width: 960px; margin: 0 auto; padding: 0.9rem 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem; }
     .brand { color: white; text-decoration: none; font-weight: 800; font-size: 1.1rem; display: inline-flex; align-items: center; gap: 0.65rem; letter-spacing: -0.01em; }
-    .brand .logo-chip { background: white; border-radius: 8px; padding: 0.3rem 0.5rem; display: inline-flex; align-items: center; }
-    .brand .logo-chip img { height: 20px; display: block; }
     nav.site-nav { display: flex; flex-wrap: wrap; gap: 0.15rem; }
     nav.site-nav a {
       color: rgba(255, 255, 255, 0.78);
@@ -107,8 +105,18 @@ function isActive(href: string) {
     .hero .hero-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .hero .hero-actions a { background: var(--color-accent); color: white; }
     .hero .hero-actions a.secondary { background: var(--color-surface-alt); color: var(--color-primary); }
-    .hero .hero-image { flex: 0 1 340px; min-width: 220px; }
-    .hero .hero-image img { width: 100%; height: auto; border-radius: var(--radius-lg); display: block; box-shadow: var(--shadow-md); }
+    .hero .hero-carousel { position: relative; flex: 0 1 380px; min-width: 260px; aspect-ratio: 4 / 3; border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-md); }
+    .carousel-track { display: flex; height: 100%; transition: transform 0.5s ease; }
+    .carousel-slide { position: relative; flex: 0 0 100%; height: 100%; display: block; }
+    .carousel-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .carousel-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 0.6rem 1rem; background: linear-gradient(0deg, rgba(16, 24, 27, 0.75), transparent); color: white; font-weight: 700; font-size: 0.95rem; }
+    .carousel-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 2rem; height: 2rem; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.85); color: var(--color-primary); font-size: 1.2rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .carousel-nav:hover { background: white; }
+    .carousel-prev { left: 0.6rem; }
+    .carousel-next { right: 0.6rem; }
+    .carousel-dots { position: absolute; bottom: 0.6rem; left: 50%; transform: translateX(-50%); display: flex; gap: 0.4rem; }
+    .carousel-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.6); padding: 0; cursor: pointer; }
+    .carousel-dot.active { background: white; }
 
     footer.site-footer { background: var(--color-primary); color: rgba(255, 255, 255, 0.7); margin-top: 1rem; }
     .footer-inner { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.8; }
@@ -125,7 +133,6 @@ function isActive(href: string) {
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="/">
-        <span class="logo-chip"><img src="/images/logo.png" alt="" width="378" height="49" /></span>
         <span>基督中心堂（九龍塘）</span>
       </a>
       <nav class="site-nav">
