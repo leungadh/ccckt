@@ -39,6 +39,11 @@ function isActive(href: string) {
       --color-accent-dark: #0b6363;
       --color-text: #1a1f23;
       --color-muted: #667179;
+      --color-wood-dark: #6b3c1f;
+      --color-wood: #a8622f;
+      --color-wood-light: #d2954f;
+      --color-wood-tint: #f3e6d4;
+      --color-wood-deep: #4a2a16;
       --radius-lg: 18px;
       --radius-md: 12px;
       --shadow-sm: 0 1px 3px rgba(16, 24, 27, 0.07);
@@ -46,7 +51,19 @@ function isActive(href: string) {
     }
 
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); font-size: 17px; line-height: 1.65; }
+    body {
+      margin: 0;
+      color: var(--color-text);
+      font-family: var(--font-body);
+      font-size: 17px;
+      line-height: 1.65;
+      background-color: var(--color-bg);
+      background-image: linear-gradient(180deg, rgba(243, 230, 212, 0.5) 0%, rgba(74, 42, 22, 0.4) 100%), url('/images/wood-panel-bg.jpg');
+      background-size: cover, cover;
+      background-repeat: no-repeat, no-repeat;
+      background-position: center, center;
+      background-attachment: scroll, fixed;
+    }
     a { color: var(--color-accent); }
 
     header.site-header {
@@ -118,6 +135,23 @@ function isActive(href: string) {
     .carousel-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.6); padding: 0; cursor: pointer; }
     .carousel-dot.active { background: white; }
 
+    .photo-gallery { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.6rem; margin-bottom: 0.5rem; }
+    .gallery-item { position: relative; display: block; aspect-ratio: 1 / 1; border-radius: var(--radius-md); overflow: hidden; border: none; padding: 0; cursor: zoom-in; background: var(--color-surface-alt); }
+    .gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.2s ease; }
+    .gallery-item:hover img { transform: scale(1.06); }
+
+    .lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 16, 0.92); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .lightbox[hidden] { display: none; }
+    .lightbox-figure { margin: 0; max-width: min(90vw, 1100px); max-height: 85vh; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+    .lightbox-image { max-width: 100%; max-height: 75vh; border-radius: var(--radius-md); box-shadow: var(--shadow-md); object-fit: contain; }
+    .lightbox-caption { color: rgba(255, 255, 255, 0.85); font-weight: 600; text-align: center; }
+    .lightbox-close { position: absolute; top: 1rem; right: 1.25rem; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.12); color: white; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+    .lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
+    .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 2.75rem; height: 2.75rem; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.12); color: white; font-size: 1.6rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .lightbox-nav:hover { background: rgba(255, 255, 255, 0.22); }
+    .lightbox-prev { left: 1rem; }
+    .lightbox-next { right: 1rem; }
+
     footer.site-footer { background: var(--color-primary); color: rgba(255, 255, 255, 0.7); margin-top: 1rem; }
     .footer-inner { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.8; }
     footer.site-footer a { color: rgba(255, 255, 255, 0.85); }
@@ -126,6 +160,9 @@ function isActive(href: string) {
       main { padding: 1.5rem 1rem 2.5rem; }
       .page-card { padding: 1.5rem; border-radius: var(--radius-md); }
       h1 { font-size: 1.45rem; }
+      .photo-gallery { grid-template-columns: repeat(6, 1fr); gap: 0.4rem; }
+      .lightbox { padding: 1rem; }
+      .lightbox-nav { width: 2.25rem; height: 2.25rem; font-size: 1.3rem; }
     }
   </style>
 </head>

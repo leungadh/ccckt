@@ -15,6 +15,7 @@ Most of the rebuild is live. Volunteers can log in and post content today; the p
 - ✅ Admin login + volunteer forms (announcement, sermon, event), tested end to end
 - ✅ Public pages live, with real content migrated from the old site
 - ✅ Visual design pass (typography, color, layout)
+- ✅ Homepage refresh — new hero carousel photos, a photo gallery with lightbox, and a wood-panel background theme drawn from the church's own interior
 - ⬜ Patch the live WordPress site (interim security mitigation — independent of this rebuild, still outstanding)
 - ⬜ Confirm the final volunteer list with church leadership
 - ⬜ DNS cutover and WordPress decommission

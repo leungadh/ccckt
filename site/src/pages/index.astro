@@ -14,19 +14,19 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     <div class="hero-carousel" id="hero-carousel">
       <div class="carousel-track">
         <a class="carousel-slide" href="/about">
-          <img src="/images/church_entrance_sign.jpg" alt="教會入口銅牌" width="456" height="161" />
+          <img src="/images/church_label.jpg" alt="教會入口銅牌" width="900" height="675" />
           <span class="carousel-caption">教會概覽</span>
         </a>
         <a class="carousel-slide" href="/sermons">
-          <img src="/images/book_shelf.jpg" alt="教會圖書角" width="456" height="161" />
+          <img src="/images/church_front.jpg" alt="教會正面" width="652" height="900" />
           <span class="carousel-caption">聖道回顧</span>
         </a>
         <a class="carousel-slide" href="/events">
-          <img src="/images/fish_pond_2.jpg" alt="教會錦鯉池" width="456" height="161" />
+          <img src="/images/fir_tree.jpg" alt="庭園老樹" width="675" height="900" />
           <span class="carousel-caption">行事曆</span>
         </a>
         <a class="carousel-slide" href="/contact">
-          <img src="/images/courtyard.jpg" alt="教會庭園一角" width="378" height="263" />
+          <img src="/images/church_garden.jpg" alt="教會庭園" width="900" height="675" />
           <span class="carousel-caption">聯絡我們</span>
         </a>
       </div>
@@ -49,6 +49,56 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 
   <h2>活動</h2>
   <div id="events-list" class="empty">載入中…</div>
+
+  <h2>教會相片集</h2>
+  <div class="photo-gallery" id="photo-gallery">
+    <button class="gallery-item" type="button" data-caption="教堂正面">
+      <img src="/images/gallery/front-1.jpg" alt="教堂正面" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="教堂正面局部">
+      <img src="/images/gallery/front-2.jpg" alt="教堂正面局部" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="隔街遠眺">
+      <img src="/images/gallery/across-street.jpg" alt="隔街遠眺教會" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="教會大閘">
+      <img src="/images/gallery/gate.jpg" alt="教會大閘" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="主堂座位">
+      <img src="/images/gallery/hall-1.jpg" alt="主堂座位" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="主堂一角">
+      <img src="/images/gallery/hall-2.jpg" alt="主堂一角" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="講台">
+      <img src="/images/gallery/podium.jpg" alt="講台" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="樓梯">
+      <img src="/images/gallery/staircase.jpg" alt="樓梯" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="彩色玻璃窗">
+      <img src="/images/gallery/window.jpg" alt="彩色玻璃窗" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="庭園老樹">
+      <img src="/images/gallery/fir-tree.jpg" alt="庭園老樹" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="庭園一角">
+      <img src="/images/gallery/garden-tree.jpg" alt="庭園一角" loading="lazy" decoding="async" />
+    </button>
+    <button class="gallery-item" type="button" data-caption="庭園">
+      <img src="/images/gallery/garden-fir.jpg" alt="庭園" loading="lazy" decoding="async" />
+    </button>
+  </div>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" type="button" aria-label="關閉">×</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="上一張">‹</button>
+    <figure class="lightbox-figure">
+      <img class="lightbox-image" id="lightbox-image" src="" alt="" />
+      <figcaption class="lightbox-caption" id="lightbox-caption"></figcaption>
+    </figure>
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="下一張">›</button>
+  </div>
 </PublicLayout>
 
 <script>
@@ -164,8 +214,55 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     setInterval(() => show(index + 1), 6000);
   }
 
+  function initGalleryLightbox() {
+    const gallery = document.getElementById('photo-gallery');
+    const lightbox = document.getElementById('lightbox') as HTMLElement | null;
+    if (!gallery || !lightbox) return;
+    const lightboxEl = lightbox;
+
+    const items = Array.from(gallery.querySelectorAll<HTMLButtonElement>('.gallery-item'));
+    const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
+    const lightboxCaption = document.getElementById('lightbox-caption')!;
+    let index = 0;
+
+    function show(i: number) {
+      index = (i + items.length) % items.length;
+      const img = items[index].querySelector('img')!;
+      lightboxImage.src = img.src;
+      lightboxImage.alt = img.alt;
+      lightboxCaption.textContent = items[index].dataset.caption ?? '';
+    }
+
+    function open(i: number) {
+      show(i);
+      lightboxEl.hidden = false;
+      document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+      lightboxEl.hidden = true;
+      lightboxImage.src = '';
+      document.body.style.overflow = '';
+    }
+
+    items.forEach((item, i) => item.addEventListener('click', () => open(i)));
+    lightboxEl.querySelector('.lightbox-close')!.addEventListener('click', close);
+    lightboxEl.querySelector('.lightbox-prev')!.addEventListener('click', () => show(index - 1));
+    lightboxEl.querySelector('.lightbox-next')!.addEventListener('click', () => show(index + 1));
+    lightboxEl.addEventListener('click', (e) => {
+      if (e.target === lightboxEl) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (lightboxEl.hidden) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'ArrowLeft') show(index - 1);
+      if (e.key === 'ArrowRight') show(index + 1);
+    });
+  }
+
   loadAnnouncements();
   loadSermons();
   loadEvents();
   initCarousel();
+  initGalleryLightbox();
 </script>
