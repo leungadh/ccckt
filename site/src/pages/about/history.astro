@@ -12,6 +12,11 @@ const characteristics = [
   <p><a href="/about">&larr; 教會概覽</a></p>
   <h1>教會歷史</h1>
 
+  <figure class="founder">
+    <img src="/images/founder-tsang-lam-fong.jpg" alt="曾霖芳牧師" width="640" height="800" />
+    <figcaption>曾霖芳牧師</figcaption>
+  </figure>
+
   <p>基督中心堂 和 香港海外神學院 是曾霖芳牧師於1966年秋天所創立。蒙神恩典，香港海外神學院辦學歷30載；而教會事工更一直延續至今。隨著曾牧師的帶領，到李苓牧師，再到後來各堂獨立，共發展至四個堂會、六個聚會地區。其中實在有很多神的作為和恩典，是不能忘記的。因此，在此願將神的恩惠與大家共同分享，以求一切榮耀頌讚歸給祂！</p>
 
   <p>從過去神在教會中的所施行的帶領和作為所見，讓我們認識到「基督中心堂」這教會，是一間：</p>
@@ -22,3 +27,13 @@ const characteristics = [
 
   <p><small>※ 註：以上資料若有疏忽不慎或錯誤偏差之處，煩請不吝糾正。本文亦得曾霖芳牧師校閱，謹此衷心致謝。</small></p>
 </PublicLayout>
+
+<style>
+  /* Founder portrait floats beside the history text on wide screens. */
+  .founder { float: right; width: 220px; margin: 0.25rem 0 1rem 1.75rem; text-align: center; }
+  .founder img { width: 100%; height: auto; display: block; border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+  .founder figcaption { margin-top: 0.6rem; font-weight: 700; color: var(--color-primary); }
+  @media (max-width: 600px) {
+    .founder { float: none; width: 200px; margin: 0 auto 1.5rem; }
+  }
+</style>
