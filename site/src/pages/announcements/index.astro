@@ -8,9 +8,7 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 
 <script>
   import { supabase } from '../../lib/supabase';
-  import { el, text } from '../../lib/dom';
-  import { formatDate } from '../../lib/format';
-  import { safeUrl } from '../../lib/safeUrl';
+  import { renderAnnouncement } from '../../lib/announcementCard';
 
   async function loadAnnouncements() {
     const container = document.getElementById('announcements-list')!;
@@ -26,19 +24,7 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
     }
 
     container.className = '';
-    container.replaceChildren(
-      ...data.map((item) => {
-        const h3 = el('h3', {}, [text(item.title)]);
-        const meta = el('div', { class: 'meta' }, [text(formatDate(item.event_date))]);
-        const body = el('p', {}, [text(item.body)]);
-        const link = safeUrl(item.link_url);
-        const actions = el('div', { class: 'actions' });
-        if (link) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
-        }
-        return el('div', { class: 'list-item' }, link ? [h3, meta, body, actions] : [h3, meta, body]);
-      }),
-    );
+    container.replaceChildren(...data.map(renderAnnouncement));
   }
 
   loadAnnouncements();

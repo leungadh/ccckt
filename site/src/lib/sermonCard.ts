@@ -1,5 +1,6 @@
 import { el, text } from './dom';
 import { formatDate } from './format';
+import { infoList, parseFields } from './structuredText';
 import { safeUrl } from './safeUrl';
 import { sermonFileUrl } from './sermonFileUrl';
 import { youtubeEmbed, youtubeId } from './youtube';
@@ -18,8 +19,18 @@ type Sermon = {
 // livestream link is a specific YouTube video, that plays inline instead.
 export function renderSermon(item: Sermon) {
   const h3 = el('h3', {}, [text(item.title)]);
-  const meta = el('div', { class: 'meta' }, [text(`${formatDate(item.sermon_date)} · 講員：${item.speaker}`)]);
-  const children: Node[] = [h3, meta];
+  // Some migrated sermons hold a whole run of fields in `speaker`
+  // ("日期：… 時間：… 講員：… 經文：… 連結：https://…"). Pull 講員 out of it,
+  // keep the other fields as their own rows, and drop 日期 (already shown) and URLs.
+  const fields = parseFields(item.speaker).filter((f) => f.label !== '日期');
+  const speaker = fields.find((f) => f.label === '講員')?.value ?? fields.find((f) => !f.label)?.value ?? '';
+  const time = fields.find((f) => f.label === '時間')?.value;
+  const rows: Array<[string, string]> = [['日期', formatDate(item.sermon_date)]];
+  if (time) rows.push(['時間', time]);
+  if (speaker) rows.push(['講員', speaker]);
+  for (const f of fields) if (f.label && f.label !== '講員' && f.label !== '時間') rows.push([f.label, f.value]);
+
+  const children: Node[] = [h3, infoList(rows)];
 
   const recording = safeUrl(item.recording_url);
   const livestream = safeUrl(item.livestream_url);

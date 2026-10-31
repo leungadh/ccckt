@@ -1,13 +1,7 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-
-// Fixed weekly schedule shown above the dated events. Edit here to change it.
-const regularMeetings = [
-  { name: '主日崇拜', time: '逢星期日上午11:00' },
-  { name: '日光會（兒童崇拜）', time: '逢星期日上午11:00' },
-  { name: '主日學（青年／成年／長者）', time: '逢星期日上午9:30' },
-  { name: '兒童級主日學', time: '逢星期日上午9:30' },
-];
+// Fixed weekly schedule shown above the dated events (shared with /about/meetings).
+import { worshipMeetings as regularMeetings } from '../../data/meetings';
 ---
 <PublicLayout title="教會活動">
   <h1>教會活動</h1>

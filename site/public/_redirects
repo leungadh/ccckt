@@ -1,0 +1,3 @@
+# Old WordPress links → new pages (Cloudflare Pages redirects)
+/our_meeting   /about/meetings   301
+/our_meeting/  /about/meetings   301
