@@ -8,15 +8,14 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 
 <script>
   import { supabase } from '../../lib/supabase';
-  import { sermonFileUrl } from '../../lib/sermonFileUrl';
-  import { el, text } from '../../lib/dom';
-  import { formatDate } from '../../lib/format';
+  import { renderSermon } from '../../lib/sermonCard';
 
   async function loadSermons() {
     const container = document.getElementById('sermons-list')!;
     const { data, error } = await supabase
       .from('sermons')
       .select('*')
+      .eq('is_published', true)
       .order('sermon_date', { ascending: false });
 
     if (error || !data || data.length === 0) {
@@ -26,23 +25,7 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
 
     container.className = '';
     container.replaceChildren(
-      ...data.map((item) => {
-        const h3 = el('h3', {}, [text(item.title)]);
-        const meta = el('div', { class: 'meta' }, [text(`${formatDate(item.sermon_date)} · 講員：${item.speaker}`)]);
-        const actions = el('div', { class: 'actions' });
-
-        if (item.livestream_url) {
-          actions.appendChild(el('a', { class: 'btn btn-live', href: item.livestream_url, target: '_blank' }, [text('📡 觀看直播')]));
-        }
-        if (item.recording_url) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: item.recording_url, target: '_blank' }, [text('錄影')]));
-        }
-        if (item.file_path) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: sermonFileUrl(item.file_path), target: '_blank' }, [text('詩歌/經文')]));
-        }
-
-        return el('div', { class: 'list-item' }, [h3, meta, actions]);
-      }),
+      ...data.map(renderSermon),
     );
   }
 

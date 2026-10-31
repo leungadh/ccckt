@@ -8,7 +8,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
       <p>主日崇拜時間：上午11:00 · 地址：九龍塘窩打老道144號</p>
       <div class="hero-actions">
         <a class="btn" href="/sermons">最新講道</a>
-        <a class="btn secondary" href="/events">行事曆</a>
+        <a class="btn secondary" href="/events">教會活動</a>
       </div>
     </div>
     <div class="hero-carousel" id="hero-carousel">
@@ -23,7 +23,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
         </a>
         <a class="carousel-slide" href="/events">
           <img src="/images/fir_tree.jpg" alt="庭園老樹" width="675" height="900" />
-          <span class="carousel-caption">行事曆</span>
+          <span class="carousel-caption">教會活動</span>
         </a>
         <a class="carousel-slide" href="/contact">
           <img src="/images/church_garden.jpg" alt="教會庭園" width="900" height="675" />
@@ -47,8 +47,9 @@ import PublicLayout from '../layouts/PublicLayout.astro';
   <h2>最新講道</h2>
   <div id="sermons-list" class="empty">載入中…</div>
 
-  <h2>活動</h2>
+  <h2>教會活動</h2>
   <div id="events-list" class="empty">載入中…</div>
+  <p class="more-link"><a href="/events">查看所有教會活動 →</a></p>
 
   <h2>教會相片集</h2>
   <div class="photo-gallery" id="photo-gallery">
@@ -103,15 +104,17 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 
 <script>
   import { supabase } from '../lib/supabase';
-  import { sermonFileUrl } from '../lib/sermonFileUrl';
+  import { renderSermon } from '../lib/sermonCard';
   import { el, text } from '../lib/dom';
   import { formatDate, formatDateTime } from '../lib/format';
+  import { safeUrl } from '../lib/safeUrl';
 
   async function loadAnnouncements() {
     const container = document.getElementById('announcements-list')!;
     const { data, error } = await supabase
       .from('announcements')
       .select('*')
+      .eq('is_published', true)
       .order('event_date', { ascending: false })
       .limit(3);
 
@@ -126,7 +129,12 @@ import PublicLayout from '../layouts/PublicLayout.astro';
         const h3 = el('h3', {}, [text(item.title)]);
         const meta = el('div', { class: 'meta' }, [text(formatDate(item.event_date))]);
         const body = el('p', {}, [text(item.body)]);
-        return el('div', { class: 'list-item' }, [h3, meta, body]);
+        const link = safeUrl(item.link_url);
+        const actions = el('div', { class: 'actions' });
+        if (link) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+        }
+        return el('div', { class: 'list-item' }, link ? [h3, meta, body, actions] : [h3, meta, body]);
       }),
     );
   }
@@ -136,6 +144,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     const { data, error } = await supabase
       .from('sermons')
       .select('*')
+      .eq('is_published', true)
       .order('sermon_date', { ascending: false })
       .limit(1);
 
@@ -146,23 +155,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 
     container.className = '';
     container.replaceChildren(
-      ...data.map((item) => {
-        const h3 = el('h3', {}, [text(item.title)]);
-        const meta = el('div', { class: 'meta' }, [text(`${formatDate(item.sermon_date)} · 講員：${item.speaker}`)]);
-        const actions = el('div', { class: 'actions' });
-
-        if (item.livestream_url) {
-          actions.appendChild(el('a', { class: 'btn btn-live', href: item.livestream_url, target: '_blank' }, [text('📡 觀看直播')]));
-        }
-        if (item.recording_url) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: item.recording_url, target: '_blank' }, [text('錄影')]));
-        }
-        if (item.file_path) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: sermonFileUrl(item.file_path), target: '_blank' }, [text('詩歌/經文')]));
-        }
-
-        return el('div', { class: 'list-item' }, [h3, meta, actions]);
-      }),
+      ...data.map(renderSermon),
     );
   }
 
@@ -171,6 +164,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     const { data, error } = await supabase
       .from('events')
       .select('*')
+      .eq('is_published', true)
       .gte('event_at', new Date().toISOString())
       .order('event_at', { ascending: true })
       .limit(3);
@@ -186,7 +180,12 @@ import PublicLayout from '../layouts/PublicLayout.astro';
         const h3 = el('h3', {}, [text(item.title)]);
         const meta = el('div', { class: 'meta' }, [text(formatDateTime(item.event_at))]);
         const body = el('p', {}, [text(item.description)]);
-        return el('div', { class: 'list-item' }, [h3, meta, body]);
+        const link = safeUrl(item.link_url);
+        const actions = el('div', { class: 'actions' });
+        if (link) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+        }
+        return el('div', { class: 'list-item' }, link ? [h3, meta, body, actions] : [h3, meta, body]);
       }),
     );
   }

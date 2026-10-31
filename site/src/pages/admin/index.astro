@@ -1,16 +1,224 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
-<AdminLayout title="首頁">
-  <h1>你好！請選擇要發佈的內容：</h1>
-  <ul class="links">
-    <li><a href="/admin/announcement">📢 發佈公告</a></li>
-    <li><a href="/admin/sermon">📖 發佈講道</a></li>
-    <li><a href="/admin/event">📅 新增活動</a></li>
-  </ul>
+<AdminLayout title="發佈內容">
+  <h1>發佈內容</h1>
+
+  <p class="type-prompt" id="type-prompt">請選擇要發佈的類型：</p>
+  <div class="type-picker" role="radiogroup" aria-labelledby="type-prompt">
+    <button type="button" class="type-option" role="radio" aria-checked="true" data-type="announcement">
+      <span class="type-icon" aria-hidden="true">📢</span>公告
+    </button>
+    <button type="button" class="type-option" role="radio" aria-checked="false" data-type="sermon">
+      <span class="type-icon" aria-hidden="true">📖</span>講道
+    </button>
+    <button type="button" class="type-option" role="radio" aria-checked="false" data-type="event">
+      <span class="type-icon" aria-hidden="true">📅</span>活動
+    </button>
+  </div>
+
+  <form id="content-form">
+    <!-- 公告 -->
+    <fieldset class="type-fields" data-type="announcement">
+      <label for="ann-title">標題</label>
+      <input type="text" id="ann-title" name="title" required />
+
+      <label for="ann-date">日期</label>
+      <input type="date" id="ann-date" name="event_date" required />
+
+      <label for="ann-body">內容</label>
+      <textarea id="ann-body" name="body" required></textarea>
+
+      <label for="ann-link">URL 連結（選填）</label>
+      <input type="url" id="ann-link" name="link_url" placeholder="https://..." pattern="https?://.+" title="請輸入以 http:// 或 https:// 開頭的網址" />
+    </fieldset>
+
+    <!-- 講道 -->
+    <fieldset class="type-fields" data-type="sermon" hidden disabled>
+      <label for="ser-title">標題</label>
+      <input type="text" id="ser-title" name="title" required />
+
+      <label for="ser-date">日期</label>
+      <input type="date" id="ser-date" name="sermon_date" required />
+
+      <label for="ser-speaker">講員</label>
+      <input type="text" id="ser-speaker" name="speaker" required />
+
+      <label for="ser-file">詩歌/經文 PDF 或 PPT</label>
+      <input type="file" id="ser-file" name="file" accept=".pdf,.ppt,.pptx" />
+
+      <label for="ser-recording">錄影連結（YouTube，選填）</label>
+      <input type="url" id="ser-recording" name="recording_url" placeholder="https://youtube.com/..." />
+
+      <label for="ser-livestream">直播連結（選填，預備惡劣天氣使用）</label>
+      <input type="url" id="ser-livestream" name="livestream_url" placeholder="https://youtube.com/..." />
+    </fieldset>
+
+    <!-- 活動 -->
+    <fieldset class="type-fields" data-type="event" hidden disabled>
+      <label for="ev-title">標題</label>
+      <input type="text" id="ev-title" name="title" required />
+
+      <label for="ev-at">日期及時間</label>
+      <input type="datetime-local" id="ev-at" name="event_at" required />
+
+      <label for="ev-desc">內容</label>
+      <textarea id="ev-desc" name="description" required></textarea>
+
+      <label for="ev-link">URL 連結（選填）</label>
+      <input type="url" id="ev-link" name="link_url" placeholder="https://..." pattern="https?://.+" title="請輸入以 http:// 或 https:// 開頭的網址" />
+    </fieldset>
+
+    <button type="submit" id="submit-btn">發佈公告</button>
+    <p class="msg" id="msg" role="status"></p>
+  </form>
 </AdminLayout>
 
 <script>
+  import { supabase } from '../../lib/supabase';
   import { requireAuth } from '../../lib/requireAuth';
+
   await requireAuth();
+
+  type ContentType = 'announcement' | 'sermon' | 'event';
+
+  const LABELS: Record<ContentType, { submit: string; success: string; failure: string }> = {
+    announcement: { submit: '發佈公告', success: '公告已成功發佈！', failure: '發佈失敗' },
+    sermon: { submit: '發佈講道', success: '講道已成功發佈！', failure: '發佈失敗' },
+    event: { submit: '新增活動', success: '活動已成功新增！', failure: '新增失敗' },
+  };
+
+  const form = document.getElementById('content-form') as HTMLFormElement;
+  const msg = document.getElementById('msg') as HTMLParagraphElement;
+  const submitButton = document.getElementById('submit-btn') as HTMLButtonElement;
+  const options = Array.from(document.querySelectorAll<HTMLButtonElement>('.type-option'));
+  const fieldsets = Array.from(document.querySelectorAll<HTMLFieldSetElement>('.type-fields'));
+
+  let current: ContentType = 'announcement';
+
+  function isContentType(value: string | null): value is ContentType {
+    return value === 'announcement' || value === 'sermon' || value === 'event';
+  }
+
+  function selectType(type: ContentType, updateUrl = true) {
+    current = type;
+    for (const opt of options) {
+      const active = opt.dataset.type === type;
+      opt.setAttribute('aria-checked', String(active));
+      opt.tabIndex = active ? 0 : -1;
+    }
+    // Disabled fieldsets are skipped by `required` validation, so only the
+    // visible type's fields are checked on submit.
+    for (const fs of fieldsets) {
+      const active = fs.dataset.type === type;
+      fs.hidden = !active;
+      fs.disabled = !active;
+    }
+    submitButton.textContent = LABELS[type].submit;
+    msg.textContent = '';
+    msg.className = 'msg';
+    if (updateUrl) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('type', type);
+      history.replaceState(null, '', url);
+    }
+  }
+
+  options.forEach((opt, i) => {
+    opt.addEventListener('click', () => selectType(opt.dataset.type as ContentType));
+    // Arrow keys move between options, as in a standard radio group.
+    opt.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const next = options[(i + (e.key === 'ArrowRight' ? 1 : options.length - 1)) % options.length];
+      selectType(next.dataset.type as ContentType);
+      next.focus();
+    });
+  });
+
+  const fromUrl = new URLSearchParams(window.location.search).get('type');
+  selectType(isContentType(fromUrl) ? fromUrl : 'announcement', false);
+
+  function field<T extends HTMLElement = HTMLInputElement>(id: string) {
+    return document.getElementById(id) as T;
+  }
+
+  async function submitAnnouncement() {
+    return supabase.from('announcements').insert({
+      title: field('ann-title').value,
+      event_date: field('ann-date').value,
+      body: field<HTMLTextAreaElement>('ann-body').value,
+      link_url: field('ann-link').value.trim() || null,
+    });
+  }
+
+  async function submitSermon() {
+    const file = field('ser-file').files?.[0];
+    let file_path: string | null = null;
+
+    if (file) {
+      file_path = `${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('sermon-files').upload(file_path, file);
+      if (uploadError) {
+        return { error: { message: `檔案上傳失敗：${uploadError.message}` }, uploadFailed: true };
+      }
+    }
+
+    return supabase.from('sermons').insert({
+      title: field('ser-title').value,
+      sermon_date: field('ser-date').value,
+      speaker: field('ser-speaker').value,
+      file_path,
+      recording_url: field('ser-recording').value || null,
+      livestream_url: field('ser-livestream').value || null,
+    });
+  }
+
+  async function submitEvent() {
+    return supabase.from('events').insert({
+      title: field('ev-title').value,
+      event_at: new Date(field('ev-at').value).toISOString(),
+      description: field<HTMLTextAreaElement>('ev-desc').value,
+      link_url: field('ev-link').value.trim() || null,
+    });
+  }
+
+  // Clear the last success/error message once the volunteer starts on the next post.
+  form.addEventListener('input', () => {
+    if (msg.textContent) {
+      msg.textContent = '';
+      msg.className = 'msg';
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const type = current;
+    msg.textContent = '';
+    msg.className = 'msg';
+    submitButton.disabled = true;
+    options.forEach((o) => (o.disabled = true));
+
+    const result: { error: { message: string } | null; uploadFailed?: boolean } =
+      type === 'announcement' ? await submitAnnouncement()
+      : type === 'sermon' ? await submitSermon()
+      : await submitEvent();
+
+    submitButton.disabled = false;
+    options.forEach((o) => (o.disabled = false));
+
+    if (result.error) {
+      msg.textContent = result.uploadFailed
+        ? result.error.message
+        : `${LABELS[type].failure}：${result.error.message}`;
+      msg.className = 'msg error';
+      return;
+    }
+
+    msg.textContent = LABELS[type].success;
+    msg.className = 'msg success';
+    fieldsets.find((fs) => fs.dataset.type === type)
+      ?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
+      .forEach((input) => (input.value = ''));
+  });
 </script>

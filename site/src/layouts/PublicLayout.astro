@@ -6,7 +6,7 @@ const { title } = Astro.props;
 
 const navLinks = [
   { href: '/', label: '主頁' },
-  { href: '/events', label: '行事曆' },
+  { href: '/events', label: '教會活動' },
   { href: '/sermons', label: '聖道回顧' },
   { href: '/about', label: '教會概覽' },
   { href: '/weather', label: '天氣指引' },
@@ -107,6 +107,8 @@ function isActive(href: string) {
     .list-item h3 { margin: 0 0 0.4rem; font-size: 1.1rem; color: var(--color-text); }
     .list-item p { white-space: pre-line; margin-bottom: 0; }
     .list-item .actions { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .video-embed { position: relative; width: 100%; aspect-ratio: 16 / 9; margin-top: 0.9rem; border-radius: var(--radius-md); overflow: hidden; background: #0d1720; box-shadow: var(--shadow-sm); }
+    .video-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
     .btn { display: inline-block; padding: 0.55rem 1.3rem; border-radius: 999px; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: opacity 0.15s ease, transform 0.15s ease; }
     .btn:hover { opacity: 0.88; }
@@ -114,6 +116,9 @@ function isActive(href: string) {
     .btn-secondary { background: white; color: var(--color-accent-dark); border: 1px solid rgba(15, 128, 128, 0.3); }
 
     .empty { color: var(--color-muted); font-style: italic; }
+    .more-link { margin: 0.9rem 0 0; font-size: 0.95rem; }
+    .more-link a { color: var(--color-accent-dark); font-weight: 600; text-decoration: none; }
+    .more-link a:hover { text-decoration: underline; }
 
     .hero { display: flex; gap: 2.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
     .hero .hero-text { flex: 1 1 280px; }

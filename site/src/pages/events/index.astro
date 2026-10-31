@@ -1,37 +1,124 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
+
+// Fixed weekly schedule shown above the dated events. Edit here to change it.
+const regularMeetings = [
+  { name: '主日崇拜', time: '逢星期日上午11:00' },
+  { name: '日光會（兒童崇拜）', time: '逢星期日上午11:00' },
+  { name: '主日學（青年／成年／長者）', time: '逢星期日上午9:30' },
+  { name: '兒童級主日學', time: '逢星期日上午9:30' },
+];
 ---
-<PublicLayout title="行事曆">
-  <h1>行事曆</h1>
+<PublicLayout title="教會活動">
+  <h1>教會活動</h1>
+
+  <section class="regular-meetings" aria-labelledby="regular-heading">
+    <h2 id="regular-heading">崇拜及主日學</h2>
+    <ul>
+      {regularMeetings.map((m) => (
+        <li>
+          <span class="rm-name">{m.name}</span>
+          <span class="rm-time">{m.time}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <h2>即將舉行</h2>
   <div id="events-list" class="empty">載入中…</div>
+
+  <section id="past-section" hidden>
+    <h2>過往活動</h2>
+    <div id="past-events-list"></div>
+  </section>
 </PublicLayout>
+
+<style is:global>
+  /* Compact weekly-schedule box, in a warm parchment tone so it stands apart
+     from the teal event cards below. */
+  .regular-meetings {
+    background: #fbf4e4;
+    border: 1px solid #ecdcb8;
+    border-left: 4px solid #c08a2e;
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1.25rem 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .regular-meetings h2 {
+    margin: 0 0 0.45rem; padding: 0; border: 0;
+    font-size: 1.05rem; color: #7a4f0e;
+  }
+  .regular-meetings ul {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); column-gap: 1.75rem;
+  }
+  .regular-meetings li {
+    display: flex; justify-content: space-between; gap: 0.75rem;
+    padding: 0.3rem 0; border-bottom: 1px dotted rgba(192, 138, 46, 0.35);
+    font-size: 0.95rem;
+  }
+  .regular-meetings .rm-name { font-weight: 700; color: var(--color-primary); }
+  .regular-meetings .rm-time { color: #7a4f0e; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #past-events-list { display: grid; gap: 0.9rem; }
+  #past-events-list .list-item { opacity: 0.8; }
+</style>
 
 <script>
   import { supabase } from '../../lib/supabase';
   import { el, text } from '../../lib/dom';
   import { formatDateTime } from '../../lib/format';
+  import { safeUrl } from '../../lib/safeUrl';
+
+  type EventRow = { title: string; description: string; event_at: string; link_url: string | null };
+
+  function renderEvent(item: EventRow) {
+    const h3 = el('h3', {}, [text(item.title)]);
+    const meta = el('div', { class: 'meta' }, [text(formatDateTime(item.event_at))]);
+    const body = el('p', {}, [text(item.description)]);
+    const children = [h3, meta, body];
+
+    const link = safeUrl(item.link_url);
+    if (link) {
+      children.push(
+        el('div', { class: 'actions' }, [
+          el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]),
+        ]),
+      );
+    }
+    return el('div', { class: 'list-item' }, children);
+  }
 
   async function loadEvents() {
-    const container = document.getElementById('events-list')!;
+    const upcomingList = document.getElementById('events-list')!;
+    const pastSection = document.getElementById('past-section')!;
+    const pastList = document.getElementById('past-events-list')!;
+
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select('title, description, event_at, link_url')
+      .eq('is_published', true)
       .order('event_at', { ascending: true });
 
-    if (error || !data || data.length === 0) {
-      container.textContent = '暫無活動。';
+    if (error || !data) {
+      upcomingList.textContent = '暫無活動。';
       return;
     }
 
-    container.className = '';
-    container.replaceChildren(
-      ...data.map((item) => {
-        const h3 = el('h3', {}, [text(item.title)]);
-        const meta = el('div', { class: 'meta' }, [text(formatDateTime(item.event_at))]);
-        const body = el('p', {}, [text(item.description)]);
-        return el('div', { class: 'list-item' }, [h3, meta, body]);
-      }),
-    );
+    const now = Date.now();
+    const upcoming = data.filter((e) => new Date(e.event_at).getTime() >= now);
+    const past = data.filter((e) => new Date(e.event_at).getTime() < now).reverse(); // most recent first
+
+    if (upcoming.length === 0) {
+      upcomingList.textContent = '暫無即將舉行的活動。';
+    } else {
+      upcomingList.className = '';
+      upcomingList.replaceChildren(...upcoming.map(renderEvent));
+    }
+
+    if (past.length > 0) {
+      pastList.replaceChildren(...past.map(renderEvent));
+      pastSection.hidden = false;
+    }
   }
 
   loadEvents();

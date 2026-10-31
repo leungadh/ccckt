@@ -1,0 +1,296 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+<AdminLayout title="內容總覽" wide>
+  <div class="dash">
+    <h1>內容總覽</h1>
+
+    <div class="dash-toolbar">
+      <div class="dash-filters" role="group" aria-label="按類型篩選">
+        <button type="button" class="dash-filter" data-filter="all" aria-pressed="true">全部</button>
+        <button type="button" class="dash-filter" data-filter="announcement" aria-pressed="false">📢 公告</button>
+        <button type="button" class="dash-filter" data-filter="sermon" aria-pressed="false">📖 講道</button>
+        <button type="button" class="dash-filter" data-filter="event" aria-pressed="false">📅 活動</button>
+      </div>
+      <p class="dash-summary" id="dash-summary" aria-live="polite"></p>
+    </div>
+
+    <p class="dash-help">「隱藏」的內容不會在教會網站上顯示，但仍保留在這裡，可隨時重新「顯示」。「刪除」會永久移除內容，無法復原。</p>
+
+    <div class="dash-table" role="table" aria-label="所有內容">
+      <div class="dash-row dash-head" role="row">
+        <span role="columnheader">日期</span>
+        <span role="columnheader">類型</span>
+        <span role="columnheader">標題</span>
+        <span role="columnheader">狀態</span>
+        <span role="columnheader"><span class="visually-hidden">操作</span></span>
+      </div>
+      <div id="dash-body" role="rowgroup">
+        <p class="dash-empty">載入中…</p>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style is:global>
+  /* is:global because the rows are created by the script below, so Astro's
+     scoping attribute would never reach them. Everything is under .dash. */
+  .dash h1 { margin-bottom: 1.25rem; }
+  .dash .dash-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; }
+  .dash .dash-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .card .dash .dash-filter {
+    margin: 0; padding: 0.45rem 1rem; border-radius: 999px; font-size: 0.95rem; font-family: inherit;
+    background: white; color: #1a1a1a; border: 1px solid #ccc; align-self: auto;
+  }
+  .card .dash .dash-filter[aria-pressed="true"] { background: #0f6e6e; border-color: #0f6e6e; color: white; }
+  .dash .dash-summary { margin: 0; color: #555; font-size: 0.95rem; }
+  .dash .dash-help { margin: 1rem 0 1.5rem; font-size: 0.92rem; color: #666; }
+
+  .dash .dash-row {
+    display: grid;
+    grid-template-columns: 9rem 5rem minmax(0, 1fr) 5.5rem 10.5rem;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid #ecece8;
+  }
+  .dash .dash-head { font-size: 0.85rem; font-weight: 700; color: #0f6e6e; border-bottom: 2px solid #dfe9e9; padding-top: 0; }
+  .dash .dash-date { font-variant-numeric: tabular-nums; color: #333; font-size: 0.95rem; }
+  .dash .dash-type { font-size: 0.9rem; white-space: nowrap; }
+  .dash .dash-title { font-weight: 600; overflow-wrap: anywhere; }
+  .dash .dash-title a { margin-left: 0.4rem; font-weight: 400; font-size: 0.85rem; color: #0f6e6e; }
+  .dash .dash-status { font-size: 0.82rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; justify-self: start; white-space: nowrap; }
+  .dash .dash-status.on { background: #e3f4e8; color: #1a7f37; }
+  .dash .dash-status.off { background: #efefec; color: #666; }
+  .card .dash .dash-toggle {
+    margin: 0; align-self: auto; justify-self: end; padding: 0.4rem 0.9rem; font-size: 0.92rem; font-family: inherit;
+    border-radius: 6px; background: white; color: #1f2d3d; border: 1px solid #1f2d3d; min-width: 4.5rem;
+  }
+  .card .dash .dash-toggle.show { background: #0f6e6e; border-color: #0f6e6e; color: white; }
+  .dash .dash-actions { display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .card .dash .dash-delete {
+    margin: 0; align-self: auto; padding: 0.4rem 0.8rem; font-size: 0.92rem; font-family: inherit;
+    border-radius: 6px; background: white; color: #b00020; border: 1px solid #e3b4bb;
+  }
+  .card .dash .dash-delete:hover:not(:disabled) { border-color: #b00020; }
+  .card .dash .dash-delete.confirm { background: #b00020; border-color: #b00020; color: white; }
+  .card .dash .dash-cancel {
+    margin: 0; align-self: auto; padding: 0.4rem 0.8rem; font-size: 0.92rem; font-family: inherit;
+    border-radius: 6px; background: white; color: #333; border: 1px solid #ccc;
+  }
+  .dash .dash-confirm-label { width: 100%; text-align: right; font-size: 0.85rem; font-weight: 700; color: #b00020; }
+  .dash .dash-row.confirming { background: #fdf3f4; }
+  .dash .dash-row.is-hidden .dash-date,
+  .dash .dash-row.is-hidden .dash-type,
+  .dash .dash-row.is-hidden .dash-title { opacity: 0.5; }
+  .dash .dash-row.is-hidden .dash-title { text-decoration: line-through; text-decoration-color: rgba(0,0,0,0.3); }
+  .dash .dash-empty { color: #666; font-style: italic; margin: 1rem 0; }
+  .dash .dash-empty.error { color: #b00020; font-style: normal; }
+  .dash .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* Phones: each row becomes a small card. */
+  @media (max-width: 640px) {
+    .dash .dash-head { display: none; }
+    .dash .dash-row {
+      grid-template-columns: 1fr auto;
+      grid-template-areas: "meta actions" "title actions" "status actions";
+      gap: 0.3rem 0.75rem;
+    }
+    .dash .dash-meta { grid-area: meta; display: flex; gap: 0.6rem; }
+    .dash .dash-title { grid-area: title; }
+    .dash .dash-status { grid-area: status; }
+    .dash .dash-actions-cell { grid-area: actions; align-self: center; }
+    .dash .dash-actions { flex-direction: column; align-items: stretch; width: 6rem; }
+    .dash .dash-confirm-label { text-align: center; }
+  }
+  @media (min-width: 641px) {
+    .dash .dash-meta { display: contents; }
+  }
+</style>
+
+<script>
+  import { supabase } from '../../lib/supabase';
+  import { requireAuth } from '../../lib/requireAuth';
+  import { el, text } from '../../lib/dom';
+  import { safeUrl } from '../../lib/safeUrl';
+
+  await requireAuth();
+
+  type ContentType = 'announcement' | 'sermon' | 'event';
+  type Row = {
+    type: ContentType;
+    id: string;
+    title: string;
+    when: string; // ISO date or timestamp, used for sorting
+    whenLabel: string;
+    link: string | null;
+    published: boolean;
+    filePath: string | null; // sermons only: uploaded PDF/PPT in the sermon-files bucket
+  };
+
+  const TABLE: Record<ContentType, 'announcements' | 'sermons' | 'events'> = {
+    announcement: 'announcements',
+    sermon: 'sermons',
+    event: 'events',
+  };
+  const TYPE_LABEL: Record<ContentType, string> = { announcement: '📢 公告', sermon: '📖 講道', event: '📅 活動' };
+
+  // Compact numeric dates (2026/12/25 10:30) so rows line up and are easy to scan.
+  const shortDate = (d: string) =>
+    new Date(d).toLocaleDateString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const shortDateTime = (d: string) =>
+    `${shortDate(d)} ${new Date(d).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+  const body = document.getElementById('dash-body')!;
+  const summary = document.getElementById('dash-summary')!;
+  const filters = Array.from(document.querySelectorAll<HTMLButtonElement>('.dash-filter'));
+
+  let rows: Row[] = [];
+  let filter: ContentType | 'all' = 'all';
+
+  async function load() {
+    const [ann, ser, ev] = await Promise.all([
+      supabase.from('announcements').select('id, title, event_date, link_url, is_published'),
+      supabase.from('sermons').select('id, title, sermon_date, recording_url, file_path, is_published'),
+      supabase.from('events').select('id, title, event_at, link_url, is_published'),
+    ]);
+
+    const error = ann.error || ser.error || ev.error;
+    if (error) {
+      body.replaceChildren(
+        el('p', { class: 'dash-empty error' }, [
+          text(
+            error.message.includes('is_published') || error.message.includes('link_url')
+              ? '資料庫尚未更新（缺少新欄位）。請先執行 supabase db push，再重新整理此頁。'
+              : `載入失敗：${error.message}`,
+          ),
+        ]),
+      );
+      return;
+    }
+
+    rows = [
+      ...(ann.data ?? []).map((r): Row => ({
+        type: 'announcement', id: r.id, title: r.title, when: r.event_date,
+        whenLabel: shortDate(r.event_date), link: safeUrl(r.link_url), published: r.is_published, filePath: null,
+      })),
+      ...(ser.data ?? []).map((r): Row => ({
+        type: 'sermon', id: r.id, title: r.title, when: r.sermon_date,
+        whenLabel: shortDate(r.sermon_date), link: safeUrl(r.recording_url), published: r.is_published, filePath: r.file_path,
+      })),
+      ...(ev.data ?? []).map((r): Row => ({
+        type: 'event', id: r.id, title: r.title, when: r.event_at,
+        whenLabel: shortDateTime(r.event_at), link: safeUrl(r.link_url), published: r.is_published, filePath: null,
+      })),
+    ].sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
+
+    render();
+  }
+
+  function render() {
+    const visible = filter === 'all' ? rows : rows.filter((r) => r.type === filter);
+    const hiddenCount = visible.filter((r) => !r.published).length;
+    summary.textContent = `共 ${visible.length} 項${hiddenCount ? ` · ${hiddenCount} 項已隱藏` : ''}`;
+
+    if (visible.length === 0) {
+      body.replaceChildren(el('p', { class: 'dash-empty' }, [text('暫無內容。')]));
+      return;
+    }
+    body.replaceChildren(...visible.map(renderRow));
+  }
+
+  function renderRow(row: Row) {
+    const title = el('span', { class: 'dash-title', role: 'cell' }, [text(row.title)]);
+    if (row.link) {
+      title.appendChild(el('a', { href: row.link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 連結')]));
+    }
+
+    const status = el('span', { class: `dash-status ${row.published ? 'on' : 'off'}`, role: 'cell' }, [
+      text(row.published ? '顯示中' : '已隱藏'),
+    ]);
+
+    const toggle = el('button', {
+      type: 'button',
+      class: `dash-toggle ${row.published ? 'hide' : 'show'}`,
+      'aria-label': `${row.published ? '隱藏' : '顯示'}「${row.title}」`,
+    }, [text(row.published ? '隱藏' : '顯示')]) as HTMLButtonElement;
+    toggle.addEventListener('click', () => setPublished(row, !row.published, toggle));
+
+    const del = el('button', { type: 'button', class: 'dash-delete', 'aria-label': `刪除「${row.title}」` }, [
+      text('刪除'),
+    ]) as HTMLButtonElement;
+    const actions = el('span', { class: 'dash-actions' }, [toggle, del]);
+    del.addEventListener('click', () => askToDelete(row, actions));
+
+    const meta = el('span', { class: 'dash-meta' }, [
+      el('span', { class: 'dash-date', role: 'cell' }, [text(row.whenLabel)]),
+      el('span', { class: 'dash-type', role: 'cell' }, [text(TYPE_LABEL[row.type])]),
+    ]);
+
+    return el('div', { class: `dash-row${row.published ? '' : ' is-hidden'}`, role: 'row' }, [
+      meta, title, status, el('span', { class: 'dash-actions-cell', role: 'cell' }, [actions]),
+    ]);
+  }
+
+  async function setPublished(row: Row, published: boolean, button: HTMLButtonElement) {
+    button.disabled = true;
+    button.textContent = '更新中…';
+    const { error } = await supabase.from(TABLE[row.type]).update({ is_published: published }).eq('id', row.id);
+    if (error) {
+      button.disabled = false;
+      button.textContent = row.published ? '隱藏' : '顯示';
+      summary.textContent = `更新失敗：${error.message}`;
+      return;
+    }
+    row.published = published;
+    render();
+  }
+
+  // Two-step delete inside the row: 刪除 → 「確定刪除？」 → 確定 / 取消.
+  function askToDelete(row: Row, actions: HTMLElement) {
+    const rowEl = actions.closest('.dash-row');
+    rowEl?.classList.add('confirming');
+
+    const yes = el('button', { type: 'button', class: 'dash-delete confirm' }, [text('確定')]) as HTMLButtonElement;
+    const no = el('button', { type: 'button', class: 'dash-cancel' }, [text('取消')]) as HTMLButtonElement;
+    actions.replaceChildren(el('span', { class: 'dash-confirm-label' }, [text('確定刪除？')]), yes, no);
+    no.addEventListener('click', () => render());
+    yes.addEventListener('click', () => deleteRow(row, yes, no));
+    no.focus();
+  }
+
+  async function deleteRow(row: Row, yes: HTMLButtonElement, no: HTMLButtonElement) {
+    yes.disabled = true;
+    no.disabled = true;
+    yes.textContent = '刪除中…';
+
+    // .select() returns the deleted rows, so a delete silently blocked by
+    // permissions (0 rows) is reported instead of looking like success.
+    const { data, error } = await supabase.from(TABLE[row.type]).delete().eq('id', row.id).select('id');
+    if (error || !data || data.length === 0) {
+      summary.textContent = `刪除失敗：${error?.message ?? '沒有權限或內容已不存在'}`;
+      render();
+      return;
+    }
+
+    let note = '';
+    if (row.filePath) {
+      const { error: fileError } = await supabase.storage.from('sermon-files').remove([row.filePath]);
+      if (fileError) note = '（附件檔案未能刪除）';
+    }
+
+    rows = rows.filter((r) => !(r.type === row.type && r.id === row.id));
+    render();
+    summary.textContent = `已刪除「${row.title}」${note} · ${summary.textContent}`;
+  }
+
+  for (const btn of filters) {
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter as ContentType | 'all';
+      filters.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      render();
+    });
+  }
+
+  load();
+</script>

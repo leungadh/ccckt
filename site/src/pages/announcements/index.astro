@@ -10,12 +10,14 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
   import { supabase } from '../../lib/supabase';
   import { el, text } from '../../lib/dom';
   import { formatDate } from '../../lib/format';
+  import { safeUrl } from '../../lib/safeUrl';
 
   async function loadAnnouncements() {
     const container = document.getElementById('announcements-list')!;
     const { data, error } = await supabase
       .from('announcements')
       .select('*')
+      .eq('is_published', true)
       .order('event_date', { ascending: false });
 
     if (error || !data || data.length === 0) {
@@ -29,7 +31,12 @@ import PublicLayout from '../../layouts/PublicLayout.astro';
         const h3 = el('h3', {}, [text(item.title)]);
         const meta = el('div', { class: 'meta' }, [text(formatDate(item.event_date))]);
         const body = el('p', {}, [text(item.body)]);
-        return el('div', { class: 'list-item' }, [h3, meta, body]);
+        const link = safeUrl(item.link_url);
+        const actions = el('div', { class: 'actions' });
+        if (link) {
+          actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+        }
+        return el('div', { class: 'list-item' }, link ? [h3, meta, body, actions] : [h3, meta, body]);
       }),
     );
   }
