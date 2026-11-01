@@ -2,35 +2,183 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 <AdminLayout title="登入" nav={false}>
-  <h1>義工登入</h1>
-  <form id="login-form">
-    <label for="email">電郵</label>
-    <input type="email" id="email" name="email" required autocomplete="username" />
+  <h1>教會同工登入</h1>
 
-    <label for="password">密碼</label>
-    <input type="password" id="password" name="password" required autocomplete="current-password" />
+  <!-- Main way in: an emailed login link (Supabase "magic link"). -->
+  <div id="link-step">
+    <p class="intro">請輸入你已登記的電郵，我們會寄出登入連結給你。</p>
+    <form id="link-form">
+      <label for="link-email">電郵</label>
+      <input type="email" id="link-email" name="email" required autocomplete="email" inputmode="email" />
+      <button type="submit" id="link-button">傳送登入連結</button>
+      <p class="msg" id="link-msg" role="status"></p>
+    </form>
+  </div>
 
-    <button type="submit">登入</button>
-    <p class="msg" id="msg"></p>
-  </form>
+  <div id="sent-step" class="sent" hidden>
+    <p class="sent-title">📧 請查閱電郵</p>
+    <p>如果 <strong id="sent-email"></strong> 已登記為教會同工，你會收到一封標題為「基督中心堂管理後台 登入連結」的電郵。按電郵內的「登入」即可進入管理後台。</p>
+    <ul>
+      <li>連結 1 小時內有效，只可使用一次</li>
+      <li>如收不到，請查看「垃圾郵件」</li>
+    </ul>
+    <div class="sent-actions">
+      <button type="button" id="resend-button" class="secondary">重新寄出</button>
+      <button type="button" id="change-email" class="secondary">改用其他電郵</button>
+    </div>
+    <p class="msg" id="sent-msg" role="status"></p>
+  </div>
+
+  <!-- Fallback: the original email + password login. -->
+  <details class="password-login">
+    <summary>用密碼登入</summary>
+    <form id="login-form">
+      <label for="email">電郵</label>
+      <input type="email" id="email" name="email" required autocomplete="username" />
+
+      <label for="password">密碼</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password" />
+
+      <button type="submit">登入</button>
+      <p class="msg" id="msg"></p>
+    </form>
+  </details>
 </AdminLayout>
+
+<style is:global>
+  .card .intro { margin: -0.75rem 0 1.5rem; color: #555; }
+  .card .sent { background: #eef7f6; border: 1px solid #cfe6e4; border-radius: 8px; padding: 1.25rem 1.4rem; }
+  .card .sent[hidden] { display: none; }
+  .card .sent-title { margin: 0 0 0.5rem; font-weight: 700; font-size: 1.15rem; color: #0f6e6e; }
+  .card .sent p { margin: 0 0 0.75rem; }
+  .card .sent ul { margin: 0 0 1rem; padding-left: 1.2rem; color: #444; font-size: 0.95rem; }
+  .card .sent-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .card .sent-actions button.secondary,
+  .card .password-login button.secondary {
+    margin-top: 0; background: white; color: #1f2d3d; border: 1px solid #1f2d3d; padding: 0.55rem 1.1rem; font-size: 0.98rem;
+  }
+  .card .password-login { margin-top: 2.25rem; padding-top: 1.25rem; border-top: 1px solid #e6e6e2; }
+  .card .password-login summary { cursor: pointer; color: #0f6e6e; font-weight: 600; font-size: 0.98rem; }
+  .card .password-login[open] summary { margin-bottom: 1.25rem; }
+</style>
 
 <script>
   import { supabase } from '../../lib/supabase';
 
-  const form = document.getElementById('login-form') as HTMLFormElement;
-  const msg = document.getElementById('msg') as HTMLParagraphElement;
-
-  // Already logged in? Skip straight to the dashboard.
+  // Already logged in? Skip straight to the admin page.
   const { data } = await supabase.auth.getSession();
   if (data.session) {
     window.location.href = '/admin/';
   }
 
+  const linkStep = document.getElementById('link-step')!;
+  const sentStep = document.getElementById('sent-step')!;
+  const linkForm = document.getElementById('link-form') as HTMLFormElement;
+  const linkEmail = document.getElementById('link-email') as HTMLInputElement;
+  const linkButton = document.getElementById('link-button') as HTMLButtonElement;
+  const linkMsg = document.getElementById('link-msg') as HTMLParagraphElement;
+  const sentEmail = document.getElementById('sent-email')!;
+  const sentMsg = document.getElementById('sent-msg') as HTMLParagraphElement;
+  const resendButton = document.getElementById('resend-button') as HTMLButtonElement;
+  const changeEmail = document.getElementById('change-email') as HTMLButtonElement;
+
+  function show(el: HTMLParagraphElement, text: string, kind: 'error' | 'success' | '' = '') {
+    el.textContent = text;
+    el.className = kind ? `msg ${kind}` : 'msg';
+  }
+
+  // Arriving back from an expired or already-used link (see requireAuth.ts).
+  const linkError = new URLSearchParams(window.location.search).get('error');
+  if (linkError) {
+    show(linkMsg, '登入連結已失效或已使用，請重新索取。', 'error');
+    history.replaceState(null, '', '/admin/login');
+  }
+
+  // Sends the login link. Only accounts already added in Supabase can log in
+  // (shouldCreateUser: false, and sign-ups are disabled for the project).
+  // An unregistered email gets the same "please check your email" screen, so
+  // the page never reveals who is registered.
+  async function sendLink(email: string): Promise<'sent' | 'too-soon' | 'failed'> {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/admin/` },
+    });
+    if (!error) return 'sent';
+    const message = error.message.toLowerCase();
+    if (error.status === 429 || message.includes('rate limit') || message.includes('security purposes')) return 'too-soon';
+    if (message.includes('signups not allowed') || message.includes('not found')) return 'sent';
+    console.error('signInWithOtp failed:', error);
+    return 'failed';
+  }
+
+  const FAILED = '暫時未能寄出電郵，請稍後再試，或用下面的「用密碼登入」。';
+  const TOO_SOON = '請求太頻繁，請等一分鐘後再試。';
+
+  let cooldownTimer: number | undefined;
+  function startCooldown(seconds = 60) {
+    clearInterval(cooldownTimer);
+    let left = seconds;
+    resendButton.disabled = true;
+    resendButton.textContent = `重新寄出（${left}）`;
+    cooldownTimer = window.setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(cooldownTimer);
+        resendButton.disabled = false;
+        resendButton.textContent = '重新寄出';
+      } else {
+        resendButton.textContent = `重新寄出（${left}）`;
+      }
+    }, 1000);
+  }
+
+  linkForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = linkEmail.value.trim();
+    show(linkMsg, '');
+    linkButton.disabled = true;
+    linkButton.textContent = '寄出中…';
+
+    const result = await sendLink(email);
+    linkButton.disabled = false;
+    linkButton.textContent = '傳送登入連結';
+
+    if (result === 'failed') return show(linkMsg, FAILED, 'error');
+    if (result === 'too-soon') return show(linkMsg, TOO_SOON, 'error');
+
+    sentEmail.textContent = email;
+    show(sentMsg, '');
+    linkStep.hidden = true;
+    sentStep.hidden = false;
+    startCooldown();
+  });
+
+  resendButton.addEventListener('click', async () => {
+    resendButton.disabled = true;
+    const result = await sendLink(sentEmail.textContent ?? '');
+    if (result === 'sent') {
+      show(sentMsg, '已重新寄出。', 'success');
+      startCooldown();
+    } else {
+      show(sentMsg, result === 'too-soon' ? TOO_SOON : FAILED, 'error');
+      resendButton.disabled = false;
+    }
+  });
+
+  changeEmail.addEventListener('click', () => {
+    clearInterval(cooldownTimer);
+    sentStep.hidden = true;
+    linkStep.hidden = false;
+    linkEmail.focus();
+  });
+
+  // ---- Fallback: email + password ----
+  const form = document.getElementById('login-form') as HTMLFormElement;
+  const msg = document.getElementById('msg') as HTMLParagraphElement;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    msg.textContent = '';
-    msg.className = 'msg';
+    show(msg, '');
 
     const email = (form.elements.namedItem('email') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
@@ -41,8 +189,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      msg.textContent = '登入失敗：電郵或密碼不正確。';
-      msg.className = 'msg error';
+      show(msg, '登入失敗：電郵或密碼不正確。', 'error');
       submitButton.disabled = false;
       return;
     }
