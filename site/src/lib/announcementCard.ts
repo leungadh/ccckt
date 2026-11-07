@@ -1,9 +1,17 @@
 import { el, text } from './dom';
 import { formatDate } from './format';
 import { safeUrl } from './safeUrl';
+import { publicFileUrl } from './storage';
 import { infoList, parseFields } from './structuredText';
 
-type Announcement = { title: string; body: string; event_date: string; link_url?: string | null };
+type Announcement = {
+  title: string;
+  body: string;
+  event_date: string;
+  link_url?: string | null;
+  file_path?: string | null; // attachment in the announcement-files bucket
+  file_name?: string | null; // its original name, used as the download name
+};
 
 // One announcement card, shared by the homepage ("最新公告") and /announcements.
 // 日期 is its own row; labelled fields in the body (時間、講員、經文…) become
@@ -16,13 +24,21 @@ export function renderAnnouncement(item: Announcement) {
   const children: Node[] = [el('h3', {}, [text(item.title)]), infoList(rows)];
   for (const f of fields) if (!f.label) children.push(el('p', { class: 'body-text' }, [text(f.value)]));
 
-  const link = safeUrl(item.link_url);
-  if (link) {
-    children.push(
-      el('div', { class: 'actions' }, [
-        el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]),
-      ]),
+  const actions = el('div', { class: 'actions' });
+  if (item.file_path) {
+    actions.appendChild(
+      el('a', {
+        class: 'btn btn-secondary',
+        href: publicFileUrl('announcement-files', item.file_path, item.file_name),
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      }, [text('📄 下載文件')]),
     );
   }
+  const link = safeUrl(item.link_url);
+  if (link) {
+    actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+  }
+  if (actions.childNodes.length) children.push(actions);
   return el('div', { class: 'list-item' }, children);
 }

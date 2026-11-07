@@ -136,7 +136,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     whenLabel: string;
     link: string | null;
     published: boolean;
-    filePath: string | null; // sermons only: uploaded PDF/PPT in the sermon-files bucket
+    filePath: string | null; // uploaded file: 講道 詩歌/經文 or 公告 attachment
     editedAt: string | null; // updated_at, stamped by the database on every save
     editedBy: string | null; // updated_by: email of whoever last saved it
   };
@@ -163,7 +163,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   async function load() {
     const [ann, ser, ev] = await Promise.all([
-      supabase.from('announcements').select('id, title, event_date, link_url, is_published, updated_at, updated_by'),
+      supabase.from('announcements').select('id, title, event_date, link_url, file_path, is_published, updated_at, updated_by'),
       supabase.from('sermons').select('id, title, sermon_date, recording_url, file_path, is_published, updated_at, updated_by'),
       supabase.from('events').select('id, title, event_at, link_url, is_published, updated_at, updated_by'),
     ]);
@@ -173,7 +173,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       body.replaceChildren(
         el('p', { class: 'dash-empty error' }, [
           text(
-            error.message.includes('is_published') || error.message.includes('link_url') || error.message.includes('updated_by')
+            error.message.includes('is_published') || error.message.includes('link_url') || error.message.includes('updated_by') || error.message.includes('file_path')
               ? '資料庫尚未更新（缺少新欄位）。請先執行 supabase db push，再重新整理此頁。'
               : `載入失敗：${error.message}`,
           ),
@@ -185,7 +185,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     rows = [
       ...(ann.data ?? []).map((r): Row => ({
         type: 'announcement', id: r.id, title: r.title, when: r.event_date,
-        whenLabel: shortDate(r.event_date), link: safeUrl(r.link_url), published: r.is_published, filePath: null,
+        whenLabel: shortDate(r.event_date), link: safeUrl(r.link_url), published: r.is_published, filePath: r.file_path,
         editedAt: r.updated_at, editedBy: r.updated_by,
       })),
       ...(ser.data ?? []).map((r): Row => ({
@@ -305,7 +305,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     let note = '';
     if (row.filePath) {
-      const { error: fileError } = await supabase.storage.from('sermon-files').remove([row.filePath]);
+      const bucket = row.type === 'announcement' ? 'announcement-files' : 'sermon-files';
+      const { error: fileError } = await supabase.storage.from(bucket).remove([row.filePath]);
       if (fileError) note = '（附件檔案未能刪除）';
     }
 

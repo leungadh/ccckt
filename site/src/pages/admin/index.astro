@@ -36,6 +36,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       <label for="ann-link">URL 連結（選填）</label>
       <input type="url" id="ann-link" name="link_url" placeholder="https://..." pattern="https?://.+" title="請輸入以 http:// 或 https:// 開頭的網址" />
+
+      <label for="ann-file" id="ann-file-label">附件（選填，例如 PDF、Word、圖片）</label>
+      <div class="file-choice" id="ann-file-choice" role="radiogroup" aria-labelledby="ann-file-label" hidden>
+        <p class="current-file">目前檔案：<a id="ann-current-link" target="_blank" rel="noopener noreferrer"></a></p>
+        <label class="radio"><input type="radio" name="ann_file_action" value="keep" checked /> 保留目前檔案</label>
+        <label class="radio"><input type="radio" name="ann_file_action" value="replace" /> 更換為新檔案</label>
+        <label class="radio"><input type="radio" name="ann_file_action" value="remove" /> 移除檔案</label>
+      </div>
+      <input type="file" id="ann-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" />
     </fieldset>
 
     <!-- 講道 -->
@@ -51,15 +60,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
       <label for="ser-file" id="ser-file-label">詩歌/經文 PDF 或 PPT</label>
 
-      <!-- Edit mode, when the sermon already has a file: keep / replace / remove. -->
+      <!-- Edit mode, when the post already has a file: keep / replace / remove. -->
       <div class="file-choice" id="ser-file-choice" role="radiogroup" aria-labelledby="ser-file-label" hidden>
         <p class="current-file">目前檔案：<a id="ser-current-link" target="_blank" rel="noopener noreferrer"></a></p>
-        <label class="radio"><input type="radio" name="file_action" value="keep" checked /> 保留目前檔案</label>
-        <label class="radio"><input type="radio" name="file_action" value="replace" /> 更換為新檔案</label>
-        <label class="radio"><input type="radio" name="file_action" value="remove" /> 移除檔案</label>
+        <label class="radio"><input type="radio" name="ser_file_action" value="keep" checked /> 保留目前檔案</label>
+        <label class="radio"><input type="radio" name="ser_file_action" value="replace" /> 更換為新檔案</label>
+        <label class="radio"><input type="radio" name="ser_file_action" value="remove" /> 移除檔案</label>
       </div>
 
-      <input type="file" id="ser-file" name="file" accept=".pdf,.ppt,.pptx" />
+      <input type="file" id="ser-file" accept=".pdf,.ppt,.pptx" />
 
       <label for="ser-recording">錄影連結（YouTube，選填）</label>
       <input type="url" id="ser-recording" name="recording_url" placeholder="https://youtube.com/..." />
@@ -114,7 +123,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 <script>
   import { supabase } from '../../lib/supabase';
   import { requireAuth } from '../../lib/requireAuth';
-  import { sermonFileUrl } from '../../lib/sermonFileUrl';
+  import { publicFileUrl, storageKey } from '../../lib/storage';
 
   await requireAuth();
 
@@ -200,20 +209,82 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const editId = params.get('edit');
   const editType = params.get('type');
   const editing = editId && isContentType(editType) ? { id: editId, type: editType } : null;
-  let originalFilePath: string | null = null; // sermon's file before editing
+  // ---------- File fields (公告 attachment, 講道 詩歌/經文) ----------
+  // A new post shows a plain file picker. When editing a post that already has
+  // a file, the 保留／更換／移除 choice appears and the picker only applies to 更換.
+  type FileAction = 'keep' | 'replace' | 'remove';
+  function fileField(prefix: 'ann' | 'ser', bucket: string) {
+    const choice = field<HTMLDivElement>(`${prefix}-file-choice`);
+    const input = field(`${prefix}-file`);
+    const radios = Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${prefix}_file_action"]`));
+    let original: string | null = null;
 
-  const fileChoice = field<HTMLDivElement>('ser-file-choice');
-  const fileInput = field('ser-file');
-  const fileActionRadios = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="file_action"]'));
-  const fileAction = () => fileActionRadios.find((r) => r.checked)?.value as 'keep' | 'replace' | 'remove';
-  function syncFileInput() {
-    // With an existing file, the picker only applies when 「更換為新檔案」 is chosen.
-    if (fileChoice.hidden) return;
-    fileInput.disabled = fileAction() !== 'replace';
-    fileInput.required = fileAction() === 'replace';
-    if (fileInput.disabled) fileInput.value = '';
+    function sync() {
+      if (choice.hidden) return;
+      const action = radios.find((r) => r.checked)?.value;
+      input.disabled = action !== 'replace';
+      input.required = action === 'replace';
+      if (input.disabled) input.value = '';
+    }
+    radios.forEach((r) => r.addEventListener('change', sync));
+
+    return {
+      bucket,
+      get original() { return original; },
+      // Edit mode: show the post's current file.
+      showCurrent(path: string | null, displayName: string) {
+        original = path;
+        if (!path) return;
+        const link = field<HTMLAnchorElement>(`${prefix}-current-link`);
+        link.href = publicFileUrl(bucket, path);
+        link.textContent = displayName;
+        choice.hidden = false;
+        sync();
+      },
+      action(): FileAction {
+        return choice.hidden ? 'replace' : ((radios.find((r) => r.checked)?.value ?? 'keep') as FileAction);
+      },
+      file: () => input.files?.[0],
+    };
   }
-  fileActionRadios.forEach((r) => r.addEventListener('change', syncFileInput));
+  const annFile = fileField('ann', 'announcement-files');
+  const serFile = fileField('ser', 'sermon-files');
+
+  // Works out the file columns for a save. Uploads first, so a failed upload
+  // never leaves the post without its old file. Returns what to clean up after.
+  async function prepareFile(
+    ff: ReturnType<typeof fileField>,
+    values: Record<string, unknown>,
+    withName: boolean,
+  ): Promise<{ uploaded: string | null; error?: string }> {
+    const action = ff.action();
+    const file = ff.file();
+    if (action === 'replace' && file) {
+      const key = storageKey(file.name);
+      const { error } = await supabase.storage.from(ff.bucket).upload(key, file, { contentType: file.type || undefined });
+      if (error) return { uploaded: null, error: `檔案上傳失敗：${error.message}` };
+      values.file_path = key;
+      if (withName) values.file_name = file.name;
+      return { uploaded: key };
+    }
+    if (action === 'remove' || !editing) {
+      values.file_path = null;
+      if (withName) values.file_name = null;
+    }
+    return { uploaded: null };
+  }
+
+  // After the save: remove a fresh upload if the save failed, or the old file
+  // if the post now points somewhere else.
+  async function finishFile(ff: ReturnType<typeof fileField>, values: Record<string, unknown>, uploaded: string | null, ok: boolean) {
+    if (!ok) {
+      if (uploaded) await supabase.storage.from(ff.bucket).remove([uploaded]);
+      return;
+    }
+    if (editing && ff.original && 'file_path' in values && values.file_path !== ff.original) {
+      await supabase.storage.from(ff.bucket).remove([ff.original]);
+    }
+  }
 
   async function startEditing(id: string, type: ContentType) {
     selectType(type, false);
@@ -244,20 +315,14 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       field('ann-date').value = row.event_date;
       field<HTMLTextAreaElement>('ann-body').value = row.body;
       field('ann-link').value = row.link_url ?? '';
+      annFile.showCurrent(row.file_path, row.file_name ?? row.file_path);
     } else if (type === 'sermon') {
       field('ser-title').value = row.title;
       field('ser-date').value = row.sermon_date;
       field('ser-speaker').value = row.speaker;
       field('ser-recording').value = row.recording_url ?? '';
       field('ser-livestream').value = row.livestream_url ?? '';
-      originalFilePath = row.file_path;
-      if (originalFilePath) {
-        const link = field<HTMLAnchorElement>('ser-current-link');
-        link.href = sermonFileUrl(originalFilePath);
-        link.textContent = originalFilePath.replace(/^\d+_/, ''); // hide the upload timestamp prefix
-        fileChoice.hidden = false;
-        syncFileInput();
-      }
+      serFile.showCurrent(row.file_path, (row.file_path ?? '').replace(/^\d+_/, '')); // hide the upload timestamp
     } else {
       field('ev-title').value = row.title;
       field('ev-at').value = toLocalInput(row.event_at);
@@ -284,13 +349,18 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     return { error: null };
   }
 
-  async function submitAnnouncement() {
-    return save('announcement', {
+  async function submitAnnouncement(): Promise<Result> {
+    const values: Record<string, unknown> = {
       title: field('ann-title').value,
       event_date: field('ann-date').value,
       body: field<HTMLTextAreaElement>('ann-body').value,
       link_url: field('ann-link').value.trim() || null,
-    });
+    };
+    const prepared = await prepareFile(annFile, values, true);
+    if (prepared.error) return { error: { message: prepared.error }, uploadFailed: true };
+    const result = await save('announcement', values);
+    await finishFile(annFile, values, prepared.uploaded, !result.error);
+    return result;
   }
 
   async function submitSermon(): Promise<Result> {
@@ -301,33 +371,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       recording_url: field('ser-recording').value || null,
       livestream_url: field('ser-livestream').value || null,
     };
-
-    const action = fileChoice.hidden ? 'replace' : fileAction(); // no existing file: an upload simply adds one
-    const file = fileInput.files?.[0];
-    let uploadedPath: string | null = null;
-
-    if (action === 'replace' && file) {
-      uploadedPath = `${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('sermon-files').upload(uploadedPath, file);
-      if (uploadError) return { error: { message: `檔案上傳失敗：${uploadError.message}` }, uploadFailed: true };
-      values.file_path = uploadedPath;
-    } else if (action === 'remove') {
-      values.file_path = null;
-    } else if (!editing) {
-      values.file_path = null;
-    }
-
+    const prepared = await prepareFile(serFile, values, false);
+    if (prepared.error) return { error: { message: prepared.error }, uploadFailed: true };
     const result = await save('sermon', values);
-
-    if (result.error) {
-      // Don't leave an orphaned upload behind if the record couldn't be saved.
-      if (uploadedPath) await supabase.storage.from('sermon-files').remove([uploadedPath]);
-      return result;
-    }
-    // Saved: the old file is no longer used by this sermon, so delete it.
-    if (editing && originalFilePath && 'file_path' in values && values.file_path !== originalFilePath) {
-      await supabase.storage.from('sermon-files').remove([originalFilePath]);
-    }
+    await finishFile(serFile, values, prepared.uploaded, !result.error);
     return result;
   }
 
@@ -375,7 +422,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     show(LABELS[type].success, 'success');
     fieldsets.find((fs) => fs.dataset.type === type)
-      ?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
+      ?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([type="radio"]), textarea')
       .forEach((input) => (input.value = ''));
   });
 </script>

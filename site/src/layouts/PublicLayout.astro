@@ -167,6 +167,8 @@ function isActive(href: string) {
     footer.site-footer { background: var(--color-primary); color: rgba(255, 255, 255, 0.7); margin-top: 1rem; }
     .footer-inner { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; font-size: 0.9rem; line-height: 1.8; }
     footer.site-footer a { color: rgba(255, 255, 255, 0.85); }
+    /* The general `p { color }` rule above would otherwise make footer text dark on the dark footer. */
+    footer.site-footer p { color: inherit; margin: 0; }
 
     @media (max-width: 600px) {
       main { padding: 1.5rem 1rem 2.5rem; }
