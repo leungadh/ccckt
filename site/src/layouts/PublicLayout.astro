@@ -114,9 +114,11 @@ function isActive(href: string) {
     .info-list dd { margin: 0; color: var(--color-text); overflow-wrap: anywhere; }
     .list-item .body-text { margin-top: 0.75rem; }
     /* 聖道回顧 category label on each sermon card */
-    .sermon-tag { display: inline-block; margin-bottom: 0.45rem; padding: 0.12rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+    .sermon-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.45rem; }
+    .sermon-tag { display: inline-block; padding: 0.12rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
     .sermon-tag-worship { background: rgba(15, 128, 128, 0.12); color: var(--color-accent-dark); }
     .sermon-tag-seminar { background: #fbecd6; color: #8a4f10; }
+    .sermon-tag-upcoming { background: #e7ecf7; color: #2f4a8a; }
     /* 「本週連結」 under this week's sermon: the fixed /weekly link, written out in full */
     .list-item .weekly-link { margin: 0.7rem 0 0; font-size: 0.9rem; overflow-wrap: anywhere; }
     .weekly-link-label { color: var(--color-muted); font-weight: 600; }

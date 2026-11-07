@@ -17,6 +17,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <span class="type-icon" aria-hidden="true">📅</span>活動
     </button>
   </div>
+  <p class="type-hint" id="type-hint" aria-live="polite"></p>
   </div>
 
   <!-- Edit mode only: the type is fixed, so show it instead of the picker. -->
@@ -28,8 +29,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <label for="ann-title">標題</label>
       <input type="text" id="ann-title" name="title" required />
 
-      <label for="ann-date">日期</label>
-      <input type="date" id="ann-date" name="event_date" required />
+      <div class="date-time">
+        <div>
+          <label for="ann-date">日期</label>
+          <input type="date" id="ann-date" name="event_date" required />
+        </div>
+        <div>
+          <label for="ann-time">時間（選填）</label>
+          <input type="time" id="ann-time" name="start_time" />
+        </div>
+      </div>
 
       <label for="ann-body">內容</label>
       <textarea id="ann-body" name="body" required></textarea>
@@ -55,14 +64,25 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         <label class="cat-option"><input type="radio" name="ser_category" value="seminar" /><span>🎓 專題講座</span></label>
       </div>
 
-      <label for="ser-title">標題</label>
+      <label for="ser-title">講題</label>
       <input type="text" id="ser-title" name="title" required />
 
-      <label for="ser-date">日期</label>
-      <input type="date" id="ser-date" name="sermon_date" required />
+      <div class="date-time">
+        <div>
+          <label for="ser-date">日期</label>
+          <input type="date" id="ser-date" name="sermon_date" required />
+        </div>
+        <div>
+          <label for="ser-time">時間（選填）</label>
+          <input type="time" id="ser-time" name="start_time" />
+        </div>
+      </div>
 
       <label for="ser-speaker">講員</label>
       <input type="text" id="ser-speaker" name="speaker" required />
+
+      <label for="ser-scripture">經文（選填）</label>
+      <input type="text" id="ser-scripture" name="scripture" placeholder="例如：得二：11-12" />
 
       <label for="ser-file" id="ser-file-label">詩歌/經文 PDF 或 PPT</label>
 
@@ -129,6 +149,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   .card label.cat-option span { padding: 0.6rem 1.2rem; border: 2px solid #ccc; border-radius: 999px; background: white; }
   .card label.cat-option input:checked + span { border-color: #0f6e6e; background: #e8f4f4; color: #0f6e6e; box-shadow: 0 0 0 3px rgba(15, 110, 110, 0.15); }
   .card label.cat-option input:focus-visible + span { outline: 3px solid #0f6e6e; outline-offset: 2px; }
+  /* The divider now sits under the hint, so the hint stays with the type buttons. */
+  .card #type-chooser { margin-bottom: 1.75rem; padding-bottom: 1.4rem; border-bottom: 1px solid #e6e6e2; }
+  .card #type-chooser .type-picker { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  .card .type-hint { margin: 0.85rem 0 0; font-size: 0.92rem; color: #555; }
+  .card .type-hint[hidden] { display: none; }
+  /* 日期 and 時間 side by side (stacked on narrow phones) */
+  .card .date-time { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0 1rem; }
+  .card fieldset .date-time label { margin-top: 1.75rem; }
+  @media (max-width: 420px) { .card .date-time { grid-template-columns: 1fr; } }
   .card .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; margin-top: 2.5rem; }
   .card .form-actions button { margin-top: 0; }
   .card .cancel-link { color: #555; font-size: 0.98rem; }
@@ -156,6 +185,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     sermon: { submit: '發佈講道', success: '講道已成功發佈！', failure: '發佈失敗' },
     event: { submit: '新增活動', success: '活動已成功新增！', failure: '新增失敗' },
   };
+
+  // One line under the type buttons, so staff pick the right one.
+  const HINTS: Record<ContentType, string> = {
+    announcement: '教會消息及通知（主日崇拜的資料請用「講道」）',
+    sermon: '主日崇拜及專題講座：講題、講員、經文、詩歌/經文、直播及錄影',
+    event: '有日期的聚會，例如團契、旅行、節期崇拜',
+  };
+  // New 講道 start at the usual Sunday service time.
+  const DEFAULT_SERMON_TIME = '11:00';
 
   const form = document.getElementById('content-form') as HTMLFormElement;
   const msg = document.getElementById('msg') as HTMLParagraphElement;
@@ -189,6 +227,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       fs.disabled = !active;
     }
     submitButton.textContent = LABELS[type].submit;
+    field('type-hint').textContent = HINTS[type];
     show('');
     if (updateUrl) {
       const url = new URL(window.location.href);
@@ -327,13 +366,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     if (type === 'announcement') {
       field('ann-title').value = row.title;
       field('ann-date').value = row.event_date;
+      field('ann-time').value = (row.start_time ?? '').slice(0, 5);
       field<HTMLTextAreaElement>('ann-body').value = row.body;
       field('ann-link').value = row.link_url ?? '';
       annFile.showCurrent(row.file_path, row.file_name ?? row.file_path);
     } else if (type === 'sermon') {
       field('ser-title').value = row.title;
       field('ser-date').value = row.sermon_date;
+      field('ser-time').value = (row.start_time ?? '').slice(0, 5);
       field('ser-speaker').value = row.speaker;
+      field('ser-scripture').value = row.scripture ?? '';
       field('ser-recording').value = row.recording_url ?? '';
       field('ser-livestream').value = row.livestream_url ?? '';
       const cat = document.querySelector<HTMLInputElement>(`input[name="ser_category"][value="${row.category ?? 'worship'}"]`);
@@ -352,6 +394,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   } else {
     const fromUrl = params.get('type');
     selectType(isContentType(fromUrl) ? fromUrl : 'announcement', false);
+    field('ser-time').value = DEFAULT_SERMON_TIME;
   }
 
   // ---------- Saving ----------
@@ -369,6 +412,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const values: Record<string, unknown> = {
       title: field('ann-title').value,
       event_date: field('ann-date').value,
+      start_time: field('ann-time').value || null,
       body: field<HTMLTextAreaElement>('ann-body').value,
       link_url: field('ann-link').value.trim() || null,
     };
@@ -383,7 +427,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const values: Record<string, unknown> = {
       title: field('ser-title').value,
       sermon_date: field('ser-date').value,
+      start_time: field('ser-time').value || null,
       speaker: field('ser-speaker').value,
+      scripture: field('ser-scripture').value.trim() || null,
       recording_url: field('ser-recording').value || null,
       livestream_url: field('ser-livestream').value || null,
       category: document.querySelector<HTMLInputElement>('input[name="ser_category"]:checked')?.value ?? 'worship',
@@ -441,5 +487,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     fieldsets.find((fs) => fs.dataset.type === type)
       ?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([type="radio"]), textarea')
       .forEach((input) => (input.value = ''));
+    field('ser-time').value = DEFAULT_SERMON_TIME;
   });
 </script>

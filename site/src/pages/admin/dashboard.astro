@@ -171,6 +171,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const shortDateTime = (d: string) =>
     `${shortDate(d)} ${new Date(d).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
+  // A date column plus its optional time ("11:00:00") as "08/11/2026 11:00".
+  const withTime = (d: string, t: string | null) => (t ? `${shortDate(d)} ${t.slice(0, 5)}` : shortDate(d));
+
   const body = document.getElementById('dash-body')!;
   const summary = document.getElementById('dash-summary')!;
   const filters = Array.from(document.querySelectorAll<HTMLButtonElement>('.dash-filter'));
@@ -180,8 +183,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   async function load() {
     const [ann, ser, ev] = await Promise.all([
-      supabase.from('announcements').select('id, title, event_date, link_url, file_path, is_published, updated_at, updated_by'),
-      supabase.from('sermons').select('id, title, sermon_date, recording_url, file_path, is_published, updated_at, updated_by'),
+      supabase.from('announcements').select('id, title, event_date, start_time, link_url, file_path, is_published, updated_at, updated_by'),
+      supabase.from('sermons').select('id, title, sermon_date, start_time, recording_url, file_path, is_published, updated_at, updated_by'),
       supabase.from('events').select('id, title, event_at, link_url, is_published, updated_at, updated_by'),
     ]);
 
@@ -190,7 +193,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       body.replaceChildren(
         el('p', { class: 'dash-empty error' }, [
           text(
-            error.message.includes('is_published') || error.message.includes('link_url') || error.message.includes('updated_by') || error.message.includes('file_path')
+            error.message.includes('is_published') || error.message.includes('link_url') || error.message.includes('updated_by') || error.message.includes('file_path') || error.message.includes('start_time')
               ? '資料庫尚未更新（缺少新欄位）。請先執行 supabase db push，再重新整理此頁。'
               : `載入失敗：${error.message}`,
           ),
@@ -202,12 +205,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     rows = [
       ...(ann.data ?? []).map((r): Row => ({
         type: 'announcement', id: r.id, title: r.title, when: r.event_date,
-        whenLabel: shortDate(r.event_date), link: safeUrl(r.link_url), published: r.is_published, filePath: r.file_path,
+        whenLabel: withTime(r.event_date, r.start_time), link: safeUrl(r.link_url), published: r.is_published, filePath: r.file_path,
         editedAt: r.updated_at, editedBy: r.updated_by,
       })),
       ...(ser.data ?? []).map((r): Row => ({
         type: 'sermon', id: r.id, title: r.title, when: r.sermon_date,
-        whenLabel: shortDate(r.sermon_date), link: safeUrl(r.recording_url), published: r.is_published, filePath: r.file_path,
+        whenLabel: withTime(r.sermon_date, r.start_time), link: safeUrl(r.recording_url), published: r.is_published, filePath: r.file_path,
         editedAt: r.updated_at, editedBy: r.updated_by,
       })),
       ...(ev.data ?? []).map((r): Row => ({

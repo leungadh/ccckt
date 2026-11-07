@@ -1,5 +1,5 @@
 import { el, text } from './dom';
-import { formatDate } from './format';
+import { formatDate, formatTime, todayInHongKong } from './format';
 import { infoList, parseFields } from './structuredText';
 import { safeUrl } from './safeUrl';
 import { sermonFileUrl } from './sermonFileUrl';
@@ -15,9 +15,11 @@ type Sermon = {
   recording_url: string | null;
   livestream_url: string | null;
   category?: string | null;
+  start_time?: string | null; // 時間
+  scripture?: string | null;  // 經文
 };
 
-// One sermon card, shared by the homepage ("最新講道") and /sermons.
+// One sermon card, shared by the homepage ("本週崇拜") and /sermons.
 // A YouTube recording plays inline; if there's no recording yet but the
 // livestream link is a specific YouTube video, that plays inline instead.
 // `isWeekly`: this is the sermon the fixed /weekly link currently opens.
@@ -28,15 +30,24 @@ export function renderSermon(item: Sermon, isWeekly = false) {
   // keep the other fields as their own rows, and drop 日期 (already shown) and URLs.
   const fields = parseFields(item.speaker).filter((f) => f.label !== '日期');
   const speaker = fields.find((f) => f.label === '講員')?.value ?? fields.find((f) => !f.label)?.value ?? '';
-  const time = fields.find((f) => f.label === '時間')?.value;
+  // 時間 and 經文 have their own fields now; older entries may only have them in that run.
+  const time = formatTime(item.start_time) || fields.find((f) => f.label === '時間')?.value;
+  const scripture = item.scripture?.trim() || fields.find((f) => f.label === '經文')?.value;
   const rows: Array<[string, string]> = [['日期', formatDate(item.sermon_date)]];
   if (time) rows.push(['時間', time]);
   if (speaker) rows.push(['講員', speaker]);
-  for (const f of fields) if (f.label && f.label !== '講員' && f.label !== '時間') rows.push([f.label, f.value]);
+  if (scripture) rows.push(['經文', scripture]);
+  const shown = ['講員', '時間', '經文'];
+  for (const f of fields) if (f.label && !shown.includes(f.label)) rows.push([f.label, f.value]);
 
   const category = isSermonCategory(item.category) ? item.category : 'worship';
   const tag = el('span', { class: `sermon-tag sermon-tag-${category}` }, [text(SERMON_CATEGORIES[category].public)]);
-  const children: Node[] = [tag, h3, infoList(rows)];
+  const tags: Node[] = [tag];
+  // Not happened yet (dated today or later in Hong Kong).
+  if (item.sermon_date >= todayInHongKong()) {
+    tags.push(el('span', { class: 'sermon-tag sermon-tag-upcoming' }, [text(item.sermon_date === todayInHongKong() ? '今日' : '即將舉行')]));
+  }
+  const children: Node[] = [el('div', { class: 'sermon-tags' }, tags), h3, infoList(rows)];
 
   const recording = safeUrl(item.recording_url);
   const livestream = safeUrl(item.livestream_url);

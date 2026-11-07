@@ -44,8 +44,9 @@ import PublicLayout from '../layouts/PublicLayout.astro';
   <h2>最新公告</h2>
   <div id="announcements-list" class="empty">載入中…</div>
 
-  <h2>最新講道</h2>
+  <h2 id="worship-heading">本週崇拜</h2>
   <div id="sermons-list" class="empty">載入中…</div>
+  <p class="more-link"><a href="/sermons">查看所有講道 →</a></p>
 
   <h2>教會活動</h2>
   <div id="events-list" class="empty">載入中…</div>
@@ -120,7 +121,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
   import { renderSermon } from '../lib/sermonCard';
   import { weeklyFilePath } from '../lib/weeklyLink';
   import { el, text } from '../lib/dom';
-  import { formatDateTime } from '../lib/format';
+  import { formatDateTime, todayInHongKong } from '../lib/format';
   import { safeUrl } from '../lib/safeUrl';
   import { linkButton } from '../lib/linkButton';
 
@@ -142,15 +143,23 @@ import PublicLayout from '../layouts/PublicLayout.astro';
     container.replaceChildren(...data.map(renderAnnouncement));
   }
 
+  // 本週崇拜: this week's Sunday worship, built from the 講道 entry (no separate
+  // 主日崇拜 公告 needed). Same idea as /weekly: the next visible 崇拜 dated today
+  // or later; if none is published yet, the most recent one.
   async function loadSermons() {
     const container = document.getElementById('sermons-list')!;
-    const [{ data, error }, weeklyPath] = await Promise.all([
-      supabase.from('sermons').select('*').eq('is_published', true).order('sermon_date', { ascending: false }).limit(1),
+    const today = todayInHongKong();
+    const worship = () => supabase.from('sermons').select('*').eq('is_published', true).eq('category', 'worship');
+    const [upcoming, latest, weeklyPath] = await Promise.all([
+      worship().gte('sermon_date', today).order('sermon_date', { ascending: true }).limit(1),
+      worship().lt('sermon_date', today).order('sermon_date', { ascending: false }).limit(1),
       weeklyFilePath(),
     ]);
 
-    if (error || !data || data.length === 0) {
-      container.textContent = '暫無講道記錄。';
+    const data = upcoming.data?.length ? upcoming.data : latest.data;
+    if (!upcoming.data?.length) document.getElementById('worship-heading')!.textContent = '最近崇拜';
+    if ((upcoming.error && latest.error) || !data || data.length === 0) {
+      container.textContent = '暫無崇拜資料。';
       return;
     }
 

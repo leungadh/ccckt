@@ -1,5 +1,5 @@
 import { el, text } from './dom';
-import { formatDate } from './format';
+import { formatDate, formatTime } from './format';
 import { safeUrl } from './safeUrl';
 import { publicFileUrl } from './storage';
 import { linkButton } from './linkButton';
@@ -9,6 +9,7 @@ type Announcement = {
   title: string;
   body: string;
   event_date: string;
+  start_time?: string | null; // 時間
   link_url?: string | null;
   file_path?: string | null; // attachment in the announcement-files bucket
   file_name?: string | null; // its original name, used as the download name
@@ -20,7 +21,10 @@ type Announcement = {
 export function renderAnnouncement(item: Announcement) {
   const fields = parseFields(item.body).filter((f) => f.label !== '日期');
   const rows: Array<[string, string]> = [['日期', formatDate(item.event_date)]];
-  for (const f of fields) if (f.label) rows.push([f.label, f.value]);
+  const time = formatTime(item.start_time);
+  if (time) rows.push(['時間', time]);
+  // A 時間 typed into the body is dropped when the 時間 field is set, so it isn't shown twice.
+  for (const f of fields) if (f.label && !(time && f.label === '時間')) rows.push([f.label, f.value]);
 
   const children: Node[] = [el('h3', {}, [text(item.title)]), infoList(rows)];
   for (const f of fields) if (!f.label) children.push(el('p', { class: 'body-text' }, [text(f.value)]));
