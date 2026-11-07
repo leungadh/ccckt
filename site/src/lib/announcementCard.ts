@@ -2,6 +2,7 @@ import { el, text } from './dom';
 import { formatDate } from './format';
 import { safeUrl } from './safeUrl';
 import { publicFileUrl } from './storage';
+import { linkButton } from './linkButton';
 import { infoList, parseFields } from './structuredText';
 
 type Announcement = {
@@ -32,12 +33,12 @@ export function renderAnnouncement(item: Announcement) {
         href: publicFileUrl('announcement-files', item.file_path, item.file_name),
         target: '_blank',
         rel: 'noopener noreferrer',
-      }, [text('📄 下載文件')]),
+      }, [text('📄 附件下載')]),
     );
   }
   const link = safeUrl(item.link_url);
   if (link) {
-    actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+    actions.appendChild(linkButton(link));
   }
   if (actions.childNodes.length) children.push(actions);
   return el('div', { class: 'list-item' }, children);

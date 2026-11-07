@@ -62,6 +62,7 @@ import { worshipMeetings as regularMeetings } from '../../data/meetings';
   import { el, text } from '../../lib/dom';
   import { formatDateTime } from '../../lib/format';
   import { safeUrl } from '../../lib/safeUrl';
+  import { linkButton } from '../../lib/linkButton';
 
   type EventRow = { title: string; description: string; event_at: string; link_url: string | null };
 
@@ -75,7 +76,7 @@ import { worshipMeetings as regularMeetings } from '../../data/meetings';
     if (link) {
       children.push(
         el('div', { class: 'actions' }, [
-          el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]),
+          linkButton(link),
         ]),
       );
     }

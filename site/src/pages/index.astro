@@ -121,6 +121,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
   import { el, text } from '../lib/dom';
   import { formatDateTime } from '../lib/format';
   import { safeUrl } from '../lib/safeUrl';
+  import { linkButton } from '../lib/linkButton';
 
   async function loadAnnouncements() {
     const container = document.getElementById('announcements-list')!;
@@ -184,7 +185,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
         const link = safeUrl(item.link_url);
         const actions = el('div', { class: 'actions' });
         if (link) {
-          actions.appendChild(el('a', { class: 'btn btn-secondary', href: link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 了解更多')]));
+          actions.appendChild(linkButton(link));
         }
         return el('div', { class: 'list-item' }, link ? [h3, meta, body, actions] : [h3, meta, body]);
       }),
