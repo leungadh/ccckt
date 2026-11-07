@@ -2,8 +2,9 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 <AdminLayout title="發佈內容">
-  <h1>發佈內容</h1>
+  <h1 id="page-title">發佈內容</h1>
 
+  <div id="type-chooser">
   <p class="type-prompt" id="type-prompt">請選擇要發佈的類型：</p>
   <div class="type-picker" role="radiogroup" aria-labelledby="type-prompt">
     <button type="button" class="type-option" role="radio" aria-checked="true" data-type="announcement">
@@ -16,6 +17,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <span class="type-icon" aria-hidden="true">📅</span>活動
     </button>
   </div>
+  </div>
+
+  <!-- Edit mode only: the type is fixed, so show it instead of the picker. -->
+  <p class="edit-note" id="edit-note" hidden></p>
 
   <form id="content-form">
     <!-- 公告 -->
@@ -44,7 +49,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <label for="ser-speaker">講員</label>
       <input type="text" id="ser-speaker" name="speaker" required />
 
-      <label for="ser-file">詩歌/經文 PDF 或 PPT</label>
+      <label for="ser-file" id="ser-file-label">詩歌/經文 PDF 或 PPT</label>
+
+      <!-- Edit mode, when the sermon already has a file: keep / replace / remove. -->
+      <div class="file-choice" id="ser-file-choice" role="radiogroup" aria-labelledby="ser-file-label" hidden>
+        <p class="current-file">目前檔案：<a id="ser-current-link" target="_blank" rel="noopener noreferrer"></a></p>
+        <label class="radio"><input type="radio" name="file_action" value="keep" checked /> 保留目前檔案</label>
+        <label class="radio"><input type="radio" name="file_action" value="replace" /> 更換為新檔案</label>
+        <label class="radio"><input type="radio" name="file_action" value="remove" /> 移除檔案</label>
+      </div>
+
       <input type="file" id="ser-file" name="file" accept=".pdf,.ppt,.pptx" />
 
       <label for="ser-recording">錄影連結（YouTube，選填）</label>
@@ -69,19 +83,50 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <input type="url" id="ev-link" name="link_url" placeholder="https://..." pattern="https?://.+" title="請輸入以 http:// 或 https:// 開頭的網址" />
     </fieldset>
 
-    <button type="submit" id="submit-btn">發佈公告</button>
+    <div class="form-actions">
+      <button type="submit" id="submit-btn">發佈公告</button>
+      <a class="cancel-link" id="cancel-link" href="/admin/dashboard" hidden>取消，返回內容總覽</a>
+    </div>
     <p class="msg" id="msg" role="status"></p>
   </form>
 </AdminLayout>
 
+
+<style is:global>
+  .card .edit-note { margin: -0.75rem 0 1.75rem; padding-bottom: 1.5rem; border-bottom: 1px solid #e6e6e2; color: #555; }
+  .card .edit-note strong { color: #0f6e6e; }
+  .card .file-choice { margin-bottom: 0.75rem; padding: 0.9rem 1rem; background: #f7f7f5; border-radius: 6px; }
+  .card .file-choice[hidden] { display: none; }
+  .card .file-choice .current-file { margin: 0 0 0.6rem; overflow-wrap: anywhere; }
+  .card .file-choice .current-file a { color: #0f6e6e; }
+  .card label.radio {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin: 0.35rem 0 0; font-weight: 400; font-size: 1rem; color: #1a1a1a; letter-spacing: 0;
+  }
+  .card label.radio input { width: auto; margin: 0; }
+  .card input[type="file"]:disabled { opacity: 0.45; }
+  .card .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; margin-top: 2.5rem; }
+  .card .form-actions button { margin-top: 0; }
+  .card .cancel-link { color: #555; font-size: 0.98rem; }
+  .card .cancel-link[hidden] { display: none; }
+</style>
+
 <script>
   import { supabase } from '../../lib/supabase';
   import { requireAuth } from '../../lib/requireAuth';
+  import { sermonFileUrl } from '../../lib/sermonFileUrl';
 
   await requireAuth();
 
   type ContentType = 'announcement' | 'sermon' | 'event';
+  type Result = { error: { message: string } | null; uploadFailed?: boolean };
 
+  const TABLE: Record<ContentType, 'announcements' | 'sermons' | 'events'> = {
+    announcement: 'announcements',
+    sermon: 'sermons',
+    event: 'events',
+  };
+  const TYPE_NAME: Record<ContentType, string> = { announcement: '📢 公告', sermon: '📖 講道', event: '📅 活動' };
   const LABELS: Record<ContentType, { submit: string; success: string; failure: string }> = {
     announcement: { submit: '發佈公告', success: '公告已成功發佈！', failure: '發佈失敗' },
     sermon: { submit: '發佈講道', success: '講道已成功發佈！', failure: '發佈失敗' },
@@ -100,6 +145,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     return value === 'announcement' || value === 'sermon' || value === 'event';
   }
 
+  function show(text: string, kind: 'error' | 'success' | '' = '') {
+    msg.textContent = text;
+    msg.className = kind ? `msg ${kind}` : 'msg';
+  }
+
   function selectType(type: ContentType, updateUrl = true) {
     current = type;
     for (const opt of options) {
@@ -115,8 +165,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       fs.disabled = !active;
     }
     submitButton.textContent = LABELS[type].submit;
-    msg.textContent = '';
-    msg.className = 'msg';
+    show('');
     if (updateUrl) {
       const url = new URL(window.location.href);
       url.searchParams.set('type', type);
@@ -136,15 +185,107 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     });
   });
 
-  const fromUrl = new URLSearchParams(window.location.search).get('type');
-  selectType(isContentType(fromUrl) ? fromUrl : 'announcement', false);
-
   function field<T extends HTMLElement = HTMLInputElement>(id: string) {
     return document.getElementById(id) as T;
   }
 
+  // <input type="datetime-local"> wants local time "YYYY-MM-DDTHH:mm".
+  function toLocalInput(iso: string) {
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+
+  // ---------- Edit mode: /admin/?edit=<id>&type=<type> (from the dashboard's 編輯) ----------
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get('edit');
+  const editType = params.get('type');
+  const editing = editId && isContentType(editType) ? { id: editId, type: editType } : null;
+  let originalFilePath: string | null = null; // sermon's file before editing
+
+  const fileChoice = field<HTMLDivElement>('ser-file-choice');
+  const fileInput = field('ser-file');
+  const fileActionRadios = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="file_action"]'));
+  const fileAction = () => fileActionRadios.find((r) => r.checked)?.value as 'keep' | 'replace' | 'remove';
+  function syncFileInput() {
+    // With an existing file, the picker only applies when 「更換為新檔案」 is chosen.
+    if (fileChoice.hidden) return;
+    fileInput.disabled = fileAction() !== 'replace';
+    fileInput.required = fileAction() === 'replace';
+    if (fileInput.disabled) fileInput.value = '';
+  }
+  fileActionRadios.forEach((r) => r.addEventListener('change', syncFileInput));
+
+  async function startEditing(id: string, type: ContentType) {
+    selectType(type, false);
+    document.title = `編輯${TYPE_NAME[type].slice(3)} · 基督中心堂管理後台`;
+    field('page-title').textContent = `編輯${TYPE_NAME[type].slice(3)}`;
+    field('type-chooser').hidden = true;
+    const note = field('edit-note');
+    note.innerHTML = '';
+    note.append('類型：', Object.assign(document.createElement('strong'), { textContent: TYPE_NAME[type] }), '（不可更改）');
+    note.hidden = false;
+    field('cancel-link').hidden = false;
+    submitButton.textContent = '儲存修改';
+
+    // Load the post and fill in the form.
+    form.inert = true;
+    show('載入中…');
+    const { data: row, error } = await supabase.from(TABLE[type]).select('*').eq('id', id).maybeSingle();
+    form.inert = false;
+    if (error || !row) {
+      show(error ? `載入失敗：${error.message}` : '找不到此內容，可能已被刪除。', 'error');
+      submitButton.disabled = true;
+      return;
+    }
+    show('');
+
+    if (type === 'announcement') {
+      field('ann-title').value = row.title;
+      field('ann-date').value = row.event_date;
+      field<HTMLTextAreaElement>('ann-body').value = row.body;
+      field('ann-link').value = row.link_url ?? '';
+    } else if (type === 'sermon') {
+      field('ser-title').value = row.title;
+      field('ser-date').value = row.sermon_date;
+      field('ser-speaker').value = row.speaker;
+      field('ser-recording').value = row.recording_url ?? '';
+      field('ser-livestream').value = row.livestream_url ?? '';
+      originalFilePath = row.file_path;
+      if (originalFilePath) {
+        const link = field<HTMLAnchorElement>('ser-current-link');
+        link.href = sermonFileUrl(originalFilePath);
+        link.textContent = originalFilePath.replace(/^\d+_/, ''); // hide the upload timestamp prefix
+        fileChoice.hidden = false;
+        syncFileInput();
+      }
+    } else {
+      field('ev-title').value = row.title;
+      field('ev-at').value = toLocalInput(row.event_at);
+      field<HTMLTextAreaElement>('ev-desc').value = row.description;
+      field('ev-link').value = row.link_url ?? '';
+    }
+  }
+
+  if (editing) {
+    await startEditing(editing.id, editing.type);
+  } else {
+    const fromUrl = params.get('type');
+    selectType(isContentType(fromUrl) ? fromUrl : 'announcement', false);
+  }
+
+  // ---------- Saving ----------
+  // An update that matches no row (deleted meanwhile, or no permission) comes
+  // back without an error, so .select('id') is used to check a row really changed.
+  async function save(type: ContentType, values: Record<string, unknown>): Promise<Result> {
+    if (!editing) return supabase.from(TABLE[type]).insert(values);
+    const { data, error } = await supabase.from(TABLE[type]).update(values).eq('id', editing.id).select('id');
+    if (error) return { error };
+    if (!data || data.length === 0) return { error: { message: '找不到此內容，可能已被刪除。' } };
+    return { error: null };
+  }
+
   async function submitAnnouncement() {
-    return supabase.from('announcements').insert({
+    return save('announcement', {
       title: field('ann-title').value,
       event_date: field('ann-date').value,
       body: field<HTMLTextAreaElement>('ann-body').value,
@@ -152,30 +293,46 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     });
   }
 
-  async function submitSermon() {
-    const file = field('ser-file').files?.[0];
-    let file_path: string | null = null;
-
-    if (file) {
-      file_path = `${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('sermon-files').upload(file_path, file);
-      if (uploadError) {
-        return { error: { message: `檔案上傳失敗：${uploadError.message}` }, uploadFailed: true };
-      }
-    }
-
-    return supabase.from('sermons').insert({
+  async function submitSermon(): Promise<Result> {
+    const values: Record<string, unknown> = {
       title: field('ser-title').value,
       sermon_date: field('ser-date').value,
       speaker: field('ser-speaker').value,
-      file_path,
       recording_url: field('ser-recording').value || null,
       livestream_url: field('ser-livestream').value || null,
-    });
+    };
+
+    const action = fileChoice.hidden ? 'replace' : fileAction(); // no existing file: an upload simply adds one
+    const file = fileInput.files?.[0];
+    let uploadedPath: string | null = null;
+
+    if (action === 'replace' && file) {
+      uploadedPath = `${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('sermon-files').upload(uploadedPath, file);
+      if (uploadError) return { error: { message: `檔案上傳失敗：${uploadError.message}` }, uploadFailed: true };
+      values.file_path = uploadedPath;
+    } else if (action === 'remove') {
+      values.file_path = null;
+    } else if (!editing) {
+      values.file_path = null;
+    }
+
+    const result = await save('sermon', values);
+
+    if (result.error) {
+      // Don't leave an orphaned upload behind if the record couldn't be saved.
+      if (uploadedPath) await supabase.storage.from('sermon-files').remove([uploadedPath]);
+      return result;
+    }
+    // Saved: the old file is no longer used by this sermon, so delete it.
+    if (editing && originalFilePath && 'file_path' in values && values.file_path !== originalFilePath) {
+      await supabase.storage.from('sermon-files').remove([originalFilePath]);
+    }
+    return result;
   }
 
   async function submitEvent() {
-    return supabase.from('events').insert({
+    return save('event', {
       title: field('ev-title').value,
       event_at: new Date(field('ev-at').value).toISOString(),
       description: field<HTMLTextAreaElement>('ev-desc').value,
@@ -185,21 +342,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   // Clear the last success/error message once the volunteer starts on the next post.
   form.addEventListener('input', () => {
-    if (msg.textContent) {
-      msg.textContent = '';
-      msg.className = 'msg';
-    }
+    if (msg.textContent) show('');
   });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = current;
-    msg.textContent = '';
-    msg.className = 'msg';
+    show('');
     submitButton.disabled = true;
     options.forEach((o) => (o.disabled = true));
 
-    const result: { error: { message: string } | null; uploadFailed?: boolean } =
+    const result =
       type === 'announcement' ? await submitAnnouncement()
       : type === 'sermon' ? await submitSermon()
       : await submitEvent();
@@ -208,15 +361,19 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     options.forEach((o) => (o.disabled = false));
 
     if (result.error) {
-      msg.textContent = result.uploadFailed
-        ? result.error.message
-        : `${LABELS[type].failure}：${result.error.message}`;
-      msg.className = 'msg error';
+      const failure = editing ? '儲存失敗' : LABELS[type].failure;
+      show(result.uploadFailed ? result.error.message : `${failure}：${result.error.message}`, 'error');
       return;
     }
 
-    msg.textContent = LABELS[type].success;
-    msg.className = 'msg success';
+    if (editing) {
+      // Back to the dashboard, which shows 「已儲存」 for this post.
+      const title = (fieldsets.find((fs) => fs.dataset.type === type)!.querySelector('input[name="title"]') as HTMLInputElement).value;
+      window.location.href = `/admin/dashboard?saved=${encodeURIComponent(title)}`;
+      return;
+    }
+
+    show(LABELS[type].success, 'success');
     fieldsets.find((fs) => fs.dataset.type === type)
       ?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
       .forEach((input) => (input.value = ''));

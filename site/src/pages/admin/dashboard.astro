@@ -13,6 +13,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         <button type="button" class="dash-filter" data-filter="event" aria-pressed="false">📅 活動</button>
       </div>
       <p class="dash-summary" id="dash-summary" aria-live="polite"></p>
+    <p class="dash-flash" id="dash-flash" role="status" hidden></p>
     </div>
 
     <p class="dash-help">「隱藏」的內容不會在教會網站上顯示，但仍保留在這裡，可隨時重新「顯示」。「刪除」會永久移除內容，無法復原。</p>
@@ -48,7 +49,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   .dash .dash-row {
     display: grid;
-    grid-template-columns: 9rem 5rem minmax(0, 1fr) 5.5rem 10.5rem;
+    grid-template-columns: 9rem 5rem minmax(0, 1fr) 5.5rem 14rem;
     gap: 0.75rem;
     align-items: center;
     padding: 0.85rem 0.25rem;
@@ -68,6 +69,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
   .card .dash .dash-toggle.show { background: #0f6e6e; border-color: #0f6e6e; color: white; }
   .dash .dash-actions { display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .dash .dash-flash { margin: 0.75rem 0 0; padding: 0.6rem 0.9rem; border-radius: 6px; background: #e3f4e8; color: #1a7f37; font-weight: 600; }
+  .dash .dash-flash[hidden] { display: none; }
+  /* inline-block so the hidden-row line-through on the title doesn't reach this line */
+  .dash .dash-edited { display: inline-block; width: 100%; margin-top: 0.2rem; font-size: 0.8rem; font-weight: 400; color: #777; }
+  .card .dash .dash-edit {
+    padding: 0.4rem 0.8rem; font-size: 0.92rem; border-radius: 6px; text-decoration: none;
+    background: white; color: #0f6e6e; border: 1px solid #9ccfcb;
+  }
+  .card .dash .dash-edit:hover { border-color: #0f6e6e; }
+  .card .dash .dash-edit { text-align: center; }
   .card .dash .dash-delete {
     margin: 0; align-self: auto; padding: 0.4rem 0.8rem; font-size: 0.92rem; font-family: inherit;
     border-radius: 6px; background: white; color: #b00020; border: 1px solid #e3b4bb;
@@ -114,7 +125,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   import { el, text } from '../../lib/dom';
   import { safeUrl } from '../../lib/safeUrl';
 
-  await requireAuth();
+  const session = await requireAuth();
 
   type ContentType = 'announcement' | 'sermon' | 'event';
   type Row = {
@@ -126,6 +137,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     link: string | null;
     published: boolean;
     filePath: string | null; // sermons only: uploaded PDF/PPT in the sermon-files bucket
+    editedAt: string | null; // updated_at, stamped by the database on every save
+    editedBy: string | null; // updated_by: email of whoever last saved it
   };
 
   const TABLE: Record<ContentType, 'announcements' | 'sermons' | 'events'> = {
@@ -150,9 +163,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   async function load() {
     const [ann, ser, ev] = await Promise.all([
-      supabase.from('announcements').select('id, title, event_date, link_url, is_published'),
-      supabase.from('sermons').select('id, title, sermon_date, recording_url, file_path, is_published'),
-      supabase.from('events').select('id, title, event_at, link_url, is_published'),
+      supabase.from('announcements').select('id, title, event_date, link_url, is_published, updated_at, updated_by'),
+      supabase.from('sermons').select('id, title, sermon_date, recording_url, file_path, is_published, updated_at, updated_by'),
+      supabase.from('events').select('id, title, event_at, link_url, is_published, updated_at, updated_by'),
     ]);
 
     const error = ann.error || ser.error || ev.error;
@@ -160,7 +173,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       body.replaceChildren(
         el('p', { class: 'dash-empty error' }, [
           text(
-            error.message.includes('is_published') || error.message.includes('link_url')
+            error.message.includes('is_published') || error.message.includes('link_url') || error.message.includes('updated_by')
               ? '資料庫尚未更新（缺少新欄位）。請先執行 supabase db push，再重新整理此頁。'
               : `載入失敗：${error.message}`,
           ),
@@ -173,14 +186,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       ...(ann.data ?? []).map((r): Row => ({
         type: 'announcement', id: r.id, title: r.title, when: r.event_date,
         whenLabel: shortDate(r.event_date), link: safeUrl(r.link_url), published: r.is_published, filePath: null,
+        editedAt: r.updated_at, editedBy: r.updated_by,
       })),
       ...(ser.data ?? []).map((r): Row => ({
         type: 'sermon', id: r.id, title: r.title, when: r.sermon_date,
         whenLabel: shortDate(r.sermon_date), link: safeUrl(r.recording_url), published: r.is_published, filePath: r.file_path,
+        editedAt: r.updated_at, editedBy: r.updated_by,
       })),
       ...(ev.data ?? []).map((r): Row => ({
         type: 'event', id: r.id, title: r.title, when: r.event_at,
         whenLabel: shortDateTime(r.event_at), link: safeUrl(r.link_url), published: r.is_published, filePath: null,
+        editedAt: r.updated_at, editedBy: r.updated_by,
       })),
     ].sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
 
@@ -204,6 +220,13 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     if (row.link) {
       title.appendChild(el('a', { href: row.link, target: '_blank', rel: 'noopener noreferrer' }, [text('🔗 連結')]));
     }
+    if (row.editedAt) {
+      // Show the name part of the email; the full address is in the tooltip.
+      const who = row.editedBy ? ` · ${row.editedBy.split('@')[0]}` : '';
+      const edited = el('span', { class: 'dash-edited' }, [text(`最後修改：${shortDateTime(row.editedAt)}${who}`)]);
+      if (row.editedBy) edited.title = row.editedBy;
+      title.appendChild(edited);
+    }
 
     const status = el('span', { class: `dash-status ${row.published ? 'on' : 'off'}`, role: 'cell' }, [
       text(row.published ? '顯示中' : '已隱藏'),
@@ -219,7 +242,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const del = el('button', { type: 'button', class: 'dash-delete', 'aria-label': `刪除「${row.title}」` }, [
       text('刪除'),
     ]) as HTMLButtonElement;
-    const actions = el('span', { class: 'dash-actions' }, [toggle, del]);
+    const edit = el('a', {
+      class: 'dash-edit',
+      href: `/admin/?edit=${encodeURIComponent(row.id)}&type=${row.type}`,
+      'aria-label': `編輯「${row.title}」`,
+    }, [text('編輯')]);
+    const actions = el('span', { class: 'dash-actions' }, [edit, toggle, del]);
     del.addEventListener('click', () => askToDelete(row, actions));
 
     const meta = el('span', { class: 'dash-meta' }, [
@@ -243,6 +271,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       return;
     }
     row.published = published;
+    row.editedAt = new Date().toISOString();
+    row.editedBy = session?.user.email ?? row.editedBy;
     render();
   }
 
@@ -290,6 +320,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       filters.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
       render();
     });
+  }
+
+  // Back from saving an edit: /admin/dashboard?saved=<title>
+  const savedTitle = new URLSearchParams(window.location.search).get('saved');
+  if (savedTitle) {
+    const flash = document.getElementById('dash-flash')!;
+    flash.textContent = `✓ 已儲存「${savedTitle}」`;
+    flash.hidden = false;
+    history.replaceState(null, '', '/admin/dashboard');
   }
 
   load();
