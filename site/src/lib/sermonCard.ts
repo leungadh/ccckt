@@ -5,6 +5,7 @@ import { safeUrl } from './safeUrl';
 import { sermonFileUrl } from './sermonFileUrl';
 import { youtubeEmbed, youtubeId } from './youtube';
 import { SERMON_CATEGORIES, isSermonCategory } from './sermonCategory';
+import { weeklyLinkLine } from './weeklyLink';
 
 type Sermon = {
   title: string;
@@ -19,7 +20,8 @@ type Sermon = {
 // One sermon card, shared by the homepage ("最新講道") and /sermons.
 // A YouTube recording plays inline; if there's no recording yet but the
 // livestream link is a specific YouTube video, that plays inline instead.
-export function renderSermon(item: Sermon) {
+// `isWeekly`: this is the sermon the fixed /weekly link currently opens.
+export function renderSermon(item: Sermon, isWeekly = false) {
   const h3 = el('h3', {}, [text(item.title)]);
   // Some migrated sermons hold a whole run of fields in `speaker`
   // ("日期：… 時間：… 講員：… 經文：… 連結：https://…"). Pull 講員 out of it,
@@ -54,6 +56,7 @@ export function renderSermon(item: Sermon) {
     actions.appendChild(el('a', { class: 'btn btn-secondary', href: sermonFileUrl(item.file_path), target: '_blank', rel: 'noopener noreferrer' }, [text('下載：詩歌/經文')]));
   }
   if (actions.childNodes.length) children.push(actions);
+  if (isWeekly) children.push(weeklyLinkLine());
 
   return el('div', { class: 'list-item' }, children);
 }

@@ -34,6 +34,7 @@ const filters = [
 <script>
   import { supabase } from '../../lib/supabase';
   import { renderSermon } from '../../lib/sermonCard';
+  import { weeklyFilePath } from '../../lib/weeklyLink';
   import { SERMON_CATEGORIES, isSermonCategory, type SermonCategory } from '../../lib/sermonCategory';
 
   const container = document.getElementById('sermons-list')!;
@@ -44,6 +45,7 @@ const filters = [
   const fromUrl = new URLSearchParams(window.location.search).get('type');
   let filter: Filter = isSermonCategory(fromUrl) ? fromUrl : 'all';
   let sermons: Array<Record<string, any>> = [];
+  let weeklyPath: string | null = null; // file the /weekly link opens right now
 
   function render() {
     buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
@@ -55,7 +57,9 @@ const filters = [
       return;
     }
     container.className = '';
-    container.replaceChildren(...shown.map((s) => renderSermon(s as Parameters<typeof renderSermon>[0])));
+    container.replaceChildren(
+      ...shown.map((s) => renderSermon(s as Parameters<typeof renderSermon>[0], !!weeklyPath && s.file_path === weeklyPath)),
+    );
   }
 
   for (const btn of buttons) {
@@ -70,11 +74,11 @@ const filters = [
   }
 
   async function loadSermons() {
-    const { data, error } = await supabase
-      .from('sermons')
-      .select('*')
-      .eq('is_published', true)
-      .order('sermon_date', { ascending: false });
+    const [{ data, error }, weekly] = await Promise.all([
+      supabase.from('sermons').select('*').eq('is_published', true).order('sermon_date', { ascending: false }),
+      weeklyFilePath(),
+    ]);
+    weeklyPath = weekly;
 
     if (error || !data) {
       container.textContent = '暫無講道記錄。';

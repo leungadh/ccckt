@@ -5,6 +5,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <div class="dash">
     <h1>內容總覽</h1>
 
+    <!-- The fixed newsletter link (served by site/functions/weekly.ts). -->
+    <section class="weekly-box" aria-labelledby="weekly-heading">
+      <p class="weekly-title" id="weekly-heading">📰 本週詩歌/經文連結 <span>（供通訊使用，每週不變）</span></p>
+      <div class="weekly-row">
+        <code id="weekly-url"></code>
+        <button type="button" id="weekly-copy">複製</button>
+      </div>
+      <p class="weekly-now" id="weekly-now" aria-live="polite">檢查中…</p>
+    </section>
+
     <div class="dash-toolbar">
       <div class="dash-filters" role="group" aria-label="按類型篩選">
         <button type="button" class="dash-filter" data-filter="all" aria-pressed="true">全部</button>
@@ -37,6 +47,13 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   /* is:global because the rows are created by the script below, so Astro's
      scoping attribute would never reach them. Everything is under .dash. */
   .dash h1 { margin-bottom: 1.25rem; }
+  .dash .weekly-box { margin: 0 0 1.75rem; padding: 1rem 1.2rem; background: #fbf4e4; border: 1px solid #ecdcb8; border-left: 4px solid #c08a2e; border-radius: 8px; }
+  .dash .weekly-title { margin: 0 0 0.6rem; font-weight: 700; color: #7a4f0e; }
+  .dash .weekly-title span { font-weight: 400; font-size: 0.88rem; color: #8a6a3a; }
+  .dash .weekly-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+  .dash .weekly-row code { padding: 0.45rem 0.7rem; background: white; border: 1px solid #ecdcb8; border-radius: 6px; font-size: 0.95rem; overflow-wrap: anywhere; user-select: all; }
+  .card .dash #weekly-copy { margin: 0; align-self: auto; padding: 0.45rem 1rem; font-size: 0.92rem; background: #c08a2e; }
+  .dash .weekly-now { margin: 0.6rem 0 0; font-size: 0.9rem; color: #555; }
   .dash .dash-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; }
   .dash .dash-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .card .dash .dash-filter {
@@ -322,6 +339,43 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       render();
     });
   }
+
+  // ---------- 本週詩歌/經文連結 ----------
+  const weeklyUrl = `${window.location.origin}/weekly`;
+  const weeklyNow = document.getElementById('weekly-now')!;
+  const copyButton = document.getElementById('weekly-copy') as HTMLButtonElement;
+  document.getElementById('weekly-url')!.textContent = weeklyUrl;
+
+  copyButton.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(weeklyUrl);
+      copyButton.textContent = '已複製 ✓';
+    } catch {
+      // Clipboard blocked: select the text so it can be copied by hand.
+      getSelection()?.selectAllChildren(document.getElementById('weekly-url')!);
+      copyButton.textContent = '請按 ⌘C / Ctrl+C';
+    }
+    setTimeout(() => (copyButton.textContent = '複製'), 2500);
+  });
+
+  // Ask the /weekly function which sermon it points to right now.
+  (async () => {
+    try {
+      const res = await fetch('/weekly?info=1', { cache: 'no-store' });
+      const info = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
+      if (!info) {
+        weeklyNow.textContent = '（此連結只在正式網站上運作，本機預覽未能檢查）';
+      } else if (info.file_path) {
+        weeklyNow.textContent = `目前指向：${shortDate(info.sermon_date)}「${info.title}」`;
+      } else if (info.error === 'none') {
+        weeklyNow.textContent = '目前未有崇拜講道的詩歌/經文檔案，連結會顯示「尚未上載」。';
+      } else {
+        weeklyNow.textContent = '暫時未能檢查連結狀態。';
+      }
+    } catch {
+      weeklyNow.textContent = '暫時未能檢查連結狀態。';
+    }
+  })();
 
   // Back from saving an edit: /admin/dashboard?saved=<title>
   const savedTitle = new URLSearchParams(window.location.search).get('saved');
