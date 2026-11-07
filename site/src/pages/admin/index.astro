@@ -11,7 +11,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <span class="type-icon" aria-hidden="true">📢</span>公告
     </button>
     <button type="button" class="type-option" role="radio" aria-checked="false" data-type="sermon">
-      <span class="type-icon" aria-hidden="true">📖</span>講道
+      <span class="type-icon" aria-hidden="true">📖</span>崇拜 / 講道
     </button>
     <button type="button" class="type-option" role="radio" aria-checked="false" data-type="event">
       <span class="type-icon" aria-hidden="true">📅</span>活動
@@ -153,6 +153,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   .card #type-chooser { margin-bottom: 1.75rem; padding-bottom: 1.4rem; border-bottom: 1px solid #e6e6e2; }
   .card #type-chooser .type-picker { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
   .card .type-hint { margin: 0.85rem 0 0; font-size: 0.92rem; color: #555; }
+  /* Keep 「崇拜 / 講道」 on one line; slightly smaller labels on narrow phones. */
+  .card .type-option { white-space: nowrap; }
+  @media (max-width: 420px) { .card .type-option { font-size: 0.95rem; padding-left: 0.25rem; padding-right: 0.25rem; } }
   .card .type-hint[hidden] { display: none; }
   /* 日期 and 時間 side by side (stacked on narrow phones) */
   .card .date-time { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0 1rem; }
