@@ -1,32 +1,87 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
+import { SERMON_CATEGORIES } from '../../lib/sermonCategory';
+
+const filters = [
+  { value: 'all', label: '全部' },
+  ...Object.entries(SERMON_CATEGORIES).map(([value, c]) => ({ value, label: c.public })),
+];
 ---
 <PublicLayout title="聖道回顧">
   <h1>聖道回顧</h1>
+
+  <div class="sermon-filters" role="group" aria-label="按類別篩選">
+    {filters.map((f, i) => (
+      <button type="button" class="sermon-filter" data-filter={f.value} aria-pressed={i === 0 ? 'true' : 'false'}>{f.label}</button>
+    ))}
+  </div>
+
   <div id="sermons-list" class="empty">載入中…</div>
 </PublicLayout>
+
+<style is:global>
+  .sermon-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1.25rem; }
+  .sermon-filter {
+    padding: 0.45rem 1.1rem; border-radius: 999px; font: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    background: white; color: var(--color-primary); border: 1px solid rgba(15, 128, 128, 0.3);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .sermon-filter:hover { border-color: var(--color-accent); }
+  .sermon-filter[aria-pressed="true"] { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+  .sermon-filter:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+</style>
 
 <script>
   import { supabase } from '../../lib/supabase';
   import { renderSermon } from '../../lib/sermonCard';
+  import { SERMON_CATEGORIES, isSermonCategory, type SermonCategory } from '../../lib/sermonCategory';
+
+  const container = document.getElementById('sermons-list')!;
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.sermon-filter'));
+
+  type Filter = SermonCategory | 'all';
+  // ?type=seminar opens the page already filtered, so a filtered view can be shared.
+  const fromUrl = new URLSearchParams(window.location.search).get('type');
+  let filter: Filter = isSermonCategory(fromUrl) ? fromUrl : 'all';
+  let sermons: Array<Record<string, any>> = [];
+
+  function render() {
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
+    const shown = filter === 'all' ? sermons : sermons.filter((s) => (s.category ?? 'worship') === filter);
+
+    if (shown.length === 0) {
+      container.className = 'empty';
+      container.textContent = filter === 'all' ? '暫無講道記錄。' : `暫無${SERMON_CATEGORIES[filter].public}。`;
+      return;
+    }
+    container.className = '';
+    container.replaceChildren(...shown.map((s) => renderSermon(s as Parameters<typeof renderSermon>[0])));
+  }
+
+  for (const btn of buttons) {
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter as Filter;
+      const url = new URL(window.location.href);
+      if (filter === 'all') url.searchParams.delete('type');
+      else url.searchParams.set('type', filter);
+      history.replaceState(null, '', url);
+      render();
+    });
+  }
 
   async function loadSermons() {
-    const container = document.getElementById('sermons-list')!;
     const { data, error } = await supabase
       .from('sermons')
       .select('*')
       .eq('is_published', true)
       .order('sermon_date', { ascending: false });
 
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       container.textContent = '暫無講道記錄。';
       return;
     }
-
-    container.className = '';
-    container.replaceChildren(
-      ...data.map(renderSermon),
-    );
+    sermons = data;
+    render();
   }
 
   loadSermons();

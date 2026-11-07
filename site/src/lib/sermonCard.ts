@@ -4,6 +4,7 @@ import { infoList, parseFields } from './structuredText';
 import { safeUrl } from './safeUrl';
 import { sermonFileUrl } from './sermonFileUrl';
 import { youtubeEmbed, youtubeId } from './youtube';
+import { SERMON_CATEGORIES, isSermonCategory } from './sermonCategory';
 
 type Sermon = {
   title: string;
@@ -12,6 +13,7 @@ type Sermon = {
   file_path: string | null;
   recording_url: string | null;
   livestream_url: string | null;
+  category?: string | null;
 };
 
 // One sermon card, shared by the homepage ("最新講道") and /sermons.
@@ -30,7 +32,9 @@ export function renderSermon(item: Sermon) {
   if (speaker) rows.push(['講員', speaker]);
   for (const f of fields) if (f.label && f.label !== '講員' && f.label !== '時間') rows.push([f.label, f.value]);
 
-  const children: Node[] = [h3, infoList(rows)];
+  const category = isSermonCategory(item.category) ? item.category : 'worship';
+  const tag = el('span', { class: `sermon-tag sermon-tag-${category}` }, [text(SERMON_CATEGORIES[category].public)]);
+  const children: Node[] = [tag, h3, infoList(rows)];
 
   const recording = safeUrl(item.recording_url);
   const livestream = safeUrl(item.livestream_url);

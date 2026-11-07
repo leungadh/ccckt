@@ -49,6 +49,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     <!-- 講道 -->
     <fieldset class="type-fields" data-type="sermon" hidden disabled>
+      <p class="field-label" id="ser-cat-label">類別</p>
+      <div class="cat-picker" role="radiogroup" aria-labelledby="ser-cat-label">
+        <label class="cat-option"><input type="radio" name="ser_category" value="worship" checked /><span>⛪ 崇拜</span></label>
+        <label class="cat-option"><input type="radio" name="ser_category" value="seminar" /><span>🎓 專題講座</span></label>
+      </div>
+
       <label for="ser-title">標題</label>
       <input type="text" id="ser-title" name="title" required />
 
@@ -114,6 +120,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
   .card label.radio input { width: auto; margin: 0; }
   .card input[type="file"]:disabled { opacity: 0.45; }
+  /* 講道 類別: native radios shown as two pill buttons */
+  .card .field-label { margin: 0 0 0.5rem; font-weight: 700; font-size: 1.05rem; color: #0f6e6e; }
+  .card .cat-picker { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.25rem; }
+  .card .cat-picker + label { margin-top: 1.75rem; }
+  .card label.cat-option { margin: 0; display: inline-flex; cursor: pointer; font-weight: 600; font-size: 1rem; color: #1a1a1a; letter-spacing: 0; }
+  .card label.cat-option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .card label.cat-option span { padding: 0.6rem 1.2rem; border: 2px solid #ccc; border-radius: 999px; background: white; }
+  .card label.cat-option input:checked + span { border-color: #0f6e6e; background: #e8f4f4; color: #0f6e6e; box-shadow: 0 0 0 3px rgba(15, 110, 110, 0.15); }
+  .card label.cat-option input:focus-visible + span { outline: 3px solid #0f6e6e; outline-offset: 2px; }
   .card .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; margin-top: 2.5rem; }
   .card .form-actions button { margin-top: 0; }
   .card .cancel-link { color: #555; font-size: 0.98rem; }
@@ -322,6 +337,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       field('ser-speaker').value = row.speaker;
       field('ser-recording').value = row.recording_url ?? '';
       field('ser-livestream').value = row.livestream_url ?? '';
+      const cat = document.querySelector<HTMLInputElement>(`input[name="ser_category"][value="${row.category ?? 'worship'}"]`);
+      if (cat) cat.checked = true;
       serFile.showCurrent(row.file_path, (row.file_path ?? '').replace(/^\d+_/, '')); // hide the upload timestamp
     } else {
       field('ev-title').value = row.title;
@@ -370,6 +387,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       speaker: field('ser-speaker').value,
       recording_url: field('ser-recording').value || null,
       livestream_url: field('ser-livestream').value || null,
+      category: document.querySelector<HTMLInputElement>('input[name="ser_category"]:checked')?.value ?? 'worship',
     };
     const prepared = await prepareFile(serFile, values, false);
     if (prepared.error) return { error: { message: prepared.error }, uploadFailed: true };
